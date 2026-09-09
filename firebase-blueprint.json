@@ -1,0 +1,199 @@
+{
+  "entities": {
+    "user": {
+      "title": "User",
+      "description": "User profile for client, driver, or admin",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "username": { "type": "string" },
+        "fullName": { "type": "string" },
+        "cedula": { "type": "string" },
+        "phone": { "type": "string" },
+        "role": { "type": "string" },
+        "status": { "type": "string" },
+        "avatarUrl": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "fullName", "role"]
+    },
+    "city": {
+      "title": "City",
+      "description": "City route location",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "isActive": { "type": "boolean" },
+        "isMainRoute": { "type": "boolean" },
+        "order": { "type": "number" }
+      },
+      "required": ["id", "name", "isActive"]
+    },
+    "fare": {
+      "title": "Fare",
+      "description": "Price and fare route definition",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "originCity": { "type": "string" },
+        "destinationCity": { "type": "string" },
+        "price": { "type": "number" },
+        "pricePerAdditionalPassenger": { "type": "number" },
+        "isActive": { "type": "boolean" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "originCity", "destinationCity", "price"]
+    },
+    "vehicle": {
+      "title": "Vehicle",
+      "description": "Vehicle fleet entry",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "make": { "type": "string" },
+        "model": { "type": "string" },
+        "year": { "type": "number" },
+        "color": { "type": "string" },
+        "plate": { "type": "string" },
+        "capacity": { "type": "number" },
+        "photoUrl": { "type": "string" },
+        "status": { "type": "string" },
+        "assignedDriverId": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "make", "model", "plate", "status"]
+    },
+    "booking": {
+      "title": "Booking",
+      "description": "Passenger trip reservation",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "clientId": { "type": "string" },
+        "clientName": { "type": "string" },
+        "clientPhone": { "type": "string" },
+        "originCity": { "type": "string" },
+        "destinationCity": { "type": "string" },
+        "date": { "type": "string" },
+        "time": { "type": "string" },
+        "passengers": { "type": "number" },
+        "tripType": { "type": "string" },
+        "pickupAddress": { "type": "string" },
+        "dropoffAddress": { "type": "string" },
+        "pickupReference": { "type": "string" },
+        "dropoffReference": { "type": "string" },
+        "fareTotal": { "type": "number" },
+        "paymentMethod": { "type": "string" },
+        "paymentProofUrl": { "type": "string" },
+        "status": { "type": "string" },
+        "driverId": { "type": "string" },
+        "driverName": { "type": "string" },
+        "vehicleId": { "type": "string" },
+        "vehiclePlate": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "clientName", "originCity", "destinationCity", "status"]
+    },
+    "shipment": {
+      "title": "Shipment",
+      "description": "Parcel and package shipment",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "clientId": { "type": "string" },
+        "senderName": { "type": "string" },
+        "senderPhone": { "type": "string" },
+        "recipientName": { "type": "string" },
+        "recipientPhone": { "type": "string" },
+        "recipientCedula": { "type": "string" },
+        "originCity": { "type": "string" },
+        "destinationCity": { "type": "string" },
+        "packageType": { "type": "string" },
+        "packageSize": { "type": "string" },
+        "notes": { "type": "string" },
+        "pickupAddress": { "type": "string" },
+        "deliveryAddress": { "type": "string" },
+        "pickupReference": { "type": "string" },
+        "deliveryReference": { "type": "string" },
+        "securityCode": { "type": "string" },
+        "fareTotal": { "type": "number" },
+        "paymentMethod": { "type": "string" },
+        "status": { "type": "string" },
+        "driverId": { "type": "string" },
+        "driverName": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "senderName", "recipientName", "securityCode", "status"]
+    },
+    "notification": {
+      "title": "Notification",
+      "description": "App notification item",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "targetRole": { "type": "string" },
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "type": { "type": "string" },
+        "read": { "type": "boolean" },
+        "timestamp": { "type": "string" }
+      },
+      "required": ["id", "title", "message"]
+    },
+    "settings": {
+      "title": "Settings",
+      "description": "Application settings and configuration",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "companyName": { "type": "string" },
+        "supportPhone": { "type": "string" },
+        "supportWhatsApp": { "type": "string" },
+        "accountNumberPichincha": { "type": "string" },
+        "accountNumberGuayaquil": { "type": "string" }
+      },
+      "required": ["id", "companyName"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "user",
+      "description": "User accounts and profiles"
+    },
+    "/cities/{cityId}": {
+      "schema": "city",
+      "description": "Configured cities and route stops"
+    },
+    "/fares/{fareId}": {
+      "schema": "fare",
+      "description": "Configured fares and pricing routes"
+    },
+    "/vehicles/{vehicleId}": {
+      "schema": "vehicle",
+      "description": "Fleet vehicles and assignment status"
+    },
+    "/bookings/{bookingId}": {
+      "schema": "booking",
+      "description": "Client trip bookings and reservations"
+    },
+    "/shipments/{shipmentId}": {
+      "schema": "shipment",
+      "description": "Client parcel shipments with 4-digit code"
+    },
+    "/notifications/{notificationId}": {
+      "schema": "notification",
+      "description": "System and trip event notifications"
+    },
+    "/settings/{settingsId}": {
+      "schema": "settings",
+      "description": "General application settings"
+    }
+  }
+}

@@ -1,0 +1,80 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 135" width="1000" height="135" fill="none">
+  <defs>
+    <!-- Metallic Gold 3D Gradient for the Triangle in A -->
+    <linearGradient id="pachaGoldWedge" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#854D0E" />
+      <stop offset="20%" stop-color="#B45309" />
+      <stop offset="45%" stop-color="#D97706" />
+      <stop offset="70%" stop-color="#F59E0B" />
+      <stop offset="90%" stop-color="#FBBF24" />
+      <stop offset="100%" stop-color="#FEF08A" />
+    </linearGradient>
+
+    <!-- 3D Specular Highlight for Golden Triangle -->
+    <linearGradient id="pachaGoldSheen" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.6" />
+      <stop offset="40%" stop-color="#FEF08A" stop-opacity="0.3" />
+      <stop offset="100%" stop-color="#D97706" stop-opacity="0" />
+    </linearGradient>
+
+    <!-- Contrast Drop Shadow for dark or light backgrounds -->
+    <filter id="pachaShadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="3" stdDeviation="2.5" flood-color="#000000" flood-opacity="0.8" />
+    </filter>
+  </defs>
+
+  <!-- 7.5-degree aerodynamic forward slant matching PORTADA PACHA 2.jpg -->
+  <g transform="skewX(-7.5) translate(22, 0)" filter="url(#pachaShadow)">
+    
+    <!-- ================= LETTER P ================= -->
+    <path d="M 32 18 L 136 18 C 168 18, 186 34, 186 52 C 186 68, 168 80, 136 80 L 72 80 L 72 120 L 32 120 Z
+             M 72 38 L 132 38 C 146 38, 154 43, 154 52 C 154 60, 146 63, 132 63 L 72 63 Z"
+          fill="#FFFFFF" />
+
+    <!-- ================= LETTER A (FIRST) ================= -->
+    <!-- Pure White Inverted V Legs with Flat Top Cap (No white crossbar) -->
+    <path d="M 292 18 L 316 18 L 396 120 L 348 120 L 304 46 L 260 120 L 212 120 Z"
+          fill="#FFFFFF" />
+
+    <!-- Golden Triangle inside the opening of A -->
+    <g>
+      <!-- Base Triangle: Bottom along baseline, rising towards right inner leg -->
+      <path d="M 252 119 C 275 116, 298 105, 334 76 L 346 119 Z"
+            fill="url(#pachaGoldWedge)" />
+      <!-- Specular Highlight Overlay -->
+      <path d="M 252 119 C 275 116, 298 105, 334 76 L 346 119 Z"
+            fill="url(#pachaGoldSheen)" />
+      <!-- Sharp Golden Top Ridge -->
+      <path d="M 254 118 C 276 115, 298 104, 334 76"
+            stroke="#FFFBEB" stroke-width="1.8" fill="none" />
+    </g>
+
+    <!-- ================= LETTER C ================= -->
+    <!-- Curved left spine, horizontal bars, 45-degree angle slice on bottom right -->
+    <path d="M 576 18 L 485 18 C 435 18, 402 46, 402 69 C 402 92, 435 120, 485 120 L 576 120 L 544 94 L 485 94 C 454 94, 442 81, 442 69 C 442 57, 454 42, 485 42 L 576 42 Z"
+          fill="#FFFFFF" />
+
+    <!-- ================= LETTER H ================= -->
+    <path d="M 602 18 L 646 18 L 646 58 L 708 58 L 708 18 L 752 18 L 752 120 L 708 120 L 708 80 L 646 80 L 646 120 L 602 120 Z"
+          fill="#FFFFFF" />
+
+    <!-- ================= LETTER A (SECOND) ================= -->
+    <!-- Pure White Inverted V Legs with Flat Top Cap (No white crossbar) -->
+    <path d="M 848 18 L 872 18 L 952 120 L 904 120 L 860 46 L 816 120 L 768 120 Z"
+          fill="#FFFFFF" />
+
+    <!-- Golden Triangle inside the opening of second A -->
+    <g>
+      <!-- Base Triangle: Bottom along baseline, rising towards right inner leg -->
+      <path d="M 808 119 C 831 116, 854 105, 890 76 L 902 119 Z"
+            fill="url(#pachaGoldWedge)" />
+      <!-- Specular Highlight Overlay -->
+      <path d="M 808 119 C 831 116, 854 105, 890 76 L 902 119 Z"
+            fill="url(#pachaGoldSheen)" />
+      <!-- Sharp Golden Top Ridge -->
+      <path d="M 810 118 C 832 115, 854 104, 890 76"
+            stroke="#FFFBEB" stroke-width="1.8" fill="none" />
+    </g>
+
+  </g>
+</svg>

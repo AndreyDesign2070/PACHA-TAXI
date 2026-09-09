@@ -1,0 +1,6 @@
+{
+  "name": "PACHA - Transporte Ejecutivo",
+  "description": "Aplicación oficial PWA de transporte ejecutivo de personas y encomiendas entre Portoviejo, Pedernales y ciudades intermedias.",
+  "requestFramePermissions": ["geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
