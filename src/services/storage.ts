@@ -476,6 +476,11 @@ export function initFirestoreRealtimeSync() {
   if (firestoreSyncStarted || typeof window === 'undefined') return;
   firestoreSyncStarted = true;
 
+  if (!db) {
+    console.info('[PACHA] Running in offline LocalStorage mode.');
+    return;
+  }
+
   testFirestoreConnection().catch(() => {});
 
   try {

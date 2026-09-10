@@ -43,16 +43,31 @@ export const firebaseConfig = {
   oAuthClientId,
 };
 
-// Initialize Firebase App
-export const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+// Initialize Firebase App safely without crashing module load
+let appInstance: ReturnType<typeof initializeApp> | undefined;
+try {
+  appInstance = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+} catch (error) {
+  console.warn('[PACHA] Firebase app initialization note:', error);
+}
+export const app = appInstance;
 
-// Initialize Firestore with configured databaseId
-export const db = firestoreDatabaseId
-  ? getFirestore(app, firestoreDatabaseId)
-  : getFirestore(app);
+// Initialize Firestore safely with configured databaseId
+let dbInstance: ReturnType<typeof getFirestore> | undefined;
+try {
+  if (app) {
+    dbInstance = firestoreDatabaseId
+      ? getFirestore(app, firestoreDatabaseId)
+      : getFirestore(app);
+  }
+} catch (error) {
+  console.warn('[PACHA] Firestore initialization note:', error);
+}
+export const db = dbInstance;
 
 // Validate Firestore connection on boot safely as outlined in Firebase Skill guidelines
 export async function testFirestoreConnection(): Promise<boolean> {
+  if (!db) return false;
   try {
     await getDocFromServer(doc(db, 'test', 'connection'));
     return true;
