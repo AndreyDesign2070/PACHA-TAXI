@@ -42,40 +42,57 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   return (
     <header className="sticky top-0 z-40 w-full bg-[#071322]/95 backdrop-blur-md border-b border-amber-500/20 shadow-lg">
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 h-16 flex items-center justify-between gap-2">
+      {/* PRIMERA LÍNEA: Logotipo oficial a la izquierda e "IDA Y VUELTA" en la parte superior derecha */}
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 py-2 flex items-center justify-between gap-2 border-b border-slate-800/60">
         {/* Left: Brand Logo */}
-        <div className="flex items-center gap-3">
-          <PachaLogo variant="compact" />
+        <div className="flex items-center gap-2">
+          <PachaLogo variant="compact" size="sm" showBadge={false} />
         </div>
 
-        {/* Right Action Controls */}
-        <div className="flex items-center gap-2 sm:gap-3">
-          {/* CLIENT GUÍA DE USO BUTTON */}
+        {/* Right: "IDA Y VUELTA" Badge filling the top-right space */}
+        <div className="flex items-center gap-2 shrink-0">
+          <div
+            id="badge-navbar-ida-vuelta"
+            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 text-slate-950 font-black text-[10px] sm:text-xs tracking-wider uppercase shadow-md shadow-amber-500/20 select-none"
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-slate-950 animate-ping" />
+            <span>{settings.brandBadgeText || 'IDA Y VUELTA'}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* SEGUNDA LÍNEA: Botón "Crear Icono", "Notificaciones" y la flechita de roles */}
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 py-1.5 flex items-center justify-between gap-2">
+        {/* Left of Second Line: GUIA DE USO (if client) + CREAR ICONO */}
+        <div className="flex items-center gap-2">
           {currentUser && currentUser.role === 'CLIENT' && onOpenGuide && (
             <button
               id="btn-nav-guia-uso"
               onClick={onOpenGuide}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500/20 to-amber-600/20 border border-amber-500/40 text-amber-300 text-xs font-black uppercase tracking-wider hover:bg-amber-500/30 hover:border-amber-400 transition-all shadow-md active:scale-95 animate-pulse"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500/20 to-amber-600/20 border border-amber-500/40 text-amber-300 text-[11px] font-black uppercase tracking-wider hover:bg-amber-500/30 hover:border-amber-400 transition-all shadow-md active:scale-95"
               title="Guía de Uso: Cómo pedir viajes y enviar encomiendas"
             >
-              <BookOpen className="w-4 h-4 text-amber-400" />
+              <BookOpen className="w-3.5 h-3.5 text-amber-400" />
               <span>GUIA DE USO</span>
             </button>
           )}
 
           {/* PWA Install Button: "CREAR ICONO" */}
           <PWAInstallButton />
+        </div>
 
+        {/* Right of Second Line: WhatsApp + Notificaciones + Flechita de Roles / Login */}
+        <div className="flex items-center gap-1.5 sm:gap-2">
           {/* Direct WhatsApp Contact Button */}
           <a
             id="btn-nav-whatsapp"
             href={`https://wa.me/${settings.supportWhatsApp}?text=Hola%20PACHA%20Transporte%20Ejecutivo,%20deseo%20más%20información`}
             target="_blank"
             rel="noopener noreferrer"
-            className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-emerald-600/20 border border-emerald-500/30 text-emerald-300 text-xs font-medium hover:bg-emerald-600/30 transition-colors"
+            className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-600/20 border border-emerald-500/30 text-emerald-300 text-xs font-medium hover:bg-emerald-600/30 transition-colors"
             title="Contacto directo WhatsApp"
           >
-            <MessageCircle className="w-4 h-4 text-emerald-400" />
+            <MessageCircle className="w-3.5 h-3.5 text-emerald-400" />
             <span className="hidden md:inline">WhatsApp</span>
           </a>
 
@@ -83,7 +100,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           <button
             id="btn-nav-notifications"
             onClick={onOpenNotifications}
-            className="relative p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 text-slate-300 transition-colors border border-slate-700/50"
+            className="relative p-1.5 sm:p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 text-slate-300 transition-colors border border-slate-700/50"
             title="Notificaciones"
           >
             <Bell className="w-4 h-4" />
@@ -94,22 +111,22 @@ export const Navbar: React.FC<NavbarProps> = ({
             )}
           </button>
 
-          {/* User Profile / Quick Role Switcher */}
+          {/* User Profile / Quick Role Switcher con la flechita */}
           {currentUser ? (
             <div className="relative">
               <button
                 id="btn-user-menu"
                 onClick={() => setShowRoleMenu(!showRoleMenu)}
-                className="flex items-center gap-2 p-1.5 rounded-xl bg-slate-800/90 border border-amber-500/20 hover:border-amber-500/50 transition-colors text-left"
+                className="flex items-center gap-1.5 sm:gap-2 p-1 sm:p-1.5 rounded-xl bg-slate-800/90 border border-amber-500/20 hover:border-amber-500/50 transition-colors text-left"
               >
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-500 to-amber-700 flex items-center justify-center text-slate-950 font-bold text-xs shadow-inner">
+                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-gradient-to-br from-amber-500 to-amber-700 flex items-center justify-center text-slate-950 font-bold text-xs shadow-inner">
                   {currentUser.fullName.charAt(0)}
                 </div>
-                <div className="hidden md:flex flex-col pr-1">
-                  <span className="text-xs font-semibold text-slate-200 truncate max-w-[110px]">
+                <div className="hidden xs:flex flex-col pr-1">
+                  <span className="text-[11px] font-semibold text-slate-200 truncate max-w-[90px] sm:max-w-[120px]">
                     {currentUser.fullName.split(' ')[0]}
                   </span>
-                  <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded border inline-block ${getRoleBadge(currentUser.role).color}`}>
+                  <span className={`text-[8px] font-bold px-1 py-0.2 rounded border inline-block ${getRoleBadge(currentUser.role).color}`}>
                     {getRoleBadge(currentUser.role).label}
                   </span>
                 </div>
@@ -184,7 +201,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <button
               id="btn-nav-login"
               onClick={onOpenLogin}
-              className="px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 text-xs sm:text-sm font-bold tracking-wider uppercase shadow-md transition-all active:scale-95"
+              className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 text-xs font-bold tracking-wider uppercase shadow-md transition-all active:scale-95"
             >
               Iniciar Sesión
             </button>

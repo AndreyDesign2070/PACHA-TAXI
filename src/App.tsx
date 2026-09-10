@@ -127,7 +127,7 @@ export default function App() {
   const effectiveRole: UserRole | 'PUBLIC' = currentUser ? currentUser.role : 'PUBLIC';
 
   return (
-    <div className="min-h-screen bg-[#071322] text-white flex flex-col antialiased selection:bg-amber-500 selection:text-slate-950 font-sans">
+    <div className="min-h-screen bg-[#071322] text-white flex flex-col antialiased selection:bg-amber-500 selection:text-slate-950 font-sans overflow-x-hidden w-full max-w-full">
       {/* 3-second animated Splash Screen */}
       {showSplash && (
         <SplashScreen
@@ -160,7 +160,7 @@ export default function App() {
         />
 
         {/* Dynamic Main View Area */}
-        <main className="flex-1 w-full min-w-0 flex flex-col">
+        <main className="flex-1 w-full min-w-0 flex flex-col pb-28 sm:pb-32">
           {/* 1. PUBLIC & CLIENT VIEWS */}
           {currentTab === 'home' && (
             <LandingPage

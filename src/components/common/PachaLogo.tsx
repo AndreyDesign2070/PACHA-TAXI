@@ -9,6 +9,7 @@ interface PachaLogoProps {
   variant?: 'full' | 'compact' | 'horizontal' | 'badge';
   showSubtitle?: boolean;
   showRoute?: boolean;
+  showBadge?: boolean;
   size?: 'sm' | 'md' | 'lg';
 }
 
@@ -17,6 +18,7 @@ export const PachaLogo: React.FC<PachaLogoProps> = ({
   variant = 'full',
   showSubtitle = true,
   showRoute = true,
+  showBadge = true,
   size = 'md'
 }) => {
   const [settings, setSettings] = useState<AppSettings>(() => PachaStorage.getSettings());
@@ -80,9 +82,11 @@ export const PachaLogo: React.FC<PachaLogoProps> = ({
                 <span className="text-amber-400">↔</span>
                 <span className="text-amber-400 font-bold">{destText}</span>
               </span>
-              <span className="text-[7px] sm:text-[8px] px-1 py-0.2 rounded bg-amber-500/20 text-amber-300 font-black uppercase tracking-wider border border-amber-500/30">
-                {badgeText}
-              </span>
+              {showBadge && (
+                <span className="text-[7px] sm:text-[8px] px-1 py-0.2 rounded bg-amber-500/20 text-amber-300 font-black uppercase tracking-wider border border-amber-500/30">
+                  {badgeText}
+                </span>
+              )}
             </div>
           )}
         </div>

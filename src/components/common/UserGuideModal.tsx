@@ -17,7 +17,8 @@ import {
   CheckCircle2,
   Info,
   Phone,
-  Eye
+  Eye,
+  ChevronDown
 } from 'lucide-react';
 import {
   RouteSelectionIllustration,
@@ -257,68 +258,30 @@ export const UserGuideModal: React.FC<UserGuideModalProps> = ({
           </button>
         </div>
 
-        {/* ================= MAIN TABS NAVIGATION ================= */}
-        <div className="flex border-b border-slate-800 bg-[#071120] px-3 pt-2 gap-1.5 overflow-x-auto scrollbar-none">
-          <button
-            id="btn-tab-guide-viajes"
-            onClick={() => {
-              setMainTab('VIAJES');
-              setCurrentStep(1);
-              setSelectedHotspot(null);
-            }}
-            className={`flex items-center gap-2 px-3.5 py-2.5 text-xs sm:text-sm font-black uppercase tracking-wider border-b-2 whitespace-nowrap transition-all ${
-              mainTab === 'VIAJES'
-                ? 'border-amber-400 text-amber-400 bg-amber-500/10 rounded-t-xl'
-                : 'border-transparent text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <Car className="w-4 h-4" />
-            <span>1. Viajes de Pasajeros</span>
-          </button>
-
-          <button
-            id="btn-tab-guide-encomiendas"
-            onClick={() => {
-              setMainTab('ENCOMIENDAS');
-              setCurrentStep(1);
-              setSelectedHotspot(null);
-            }}
-            className={`flex items-center gap-2 px-3.5 py-2.5 text-xs sm:text-sm font-black uppercase tracking-wider border-b-2 whitespace-nowrap transition-all ${
-              mainTab === 'ENCOMIENDAS'
-                ? 'border-amber-400 text-amber-400 bg-amber-500/10 rounded-t-xl'
-                : 'border-transparent text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <Package className="w-4 h-4" />
-            <span>2. Encomiendas Seguras</span>
-          </button>
-
-          <button
-            id="btn-tab-guide-simulador"
-            onClick={() => setMainTab('SIMULADOR')}
-            className={`flex items-center gap-1.5 px-3 py-2.5 text-xs sm:text-sm font-black uppercase tracking-wider border-b-2 whitespace-nowrap transition-all ${
-              mainTab === 'SIMULADOR'
-                ? 'border-emerald-400 text-emerald-300 bg-emerald-500/10 rounded-t-xl'
-                : 'border-transparent text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <Sparkles className="w-4 h-4 text-emerald-400" />
-            <span>Simulador de Prueba</span>
-          </button>
-
-          <button
-            id="btn-tab-guide-faq"
-            onClick={() => setMainTab('FAQ')}
-            className={`flex items-center gap-1.5 px-3 py-2.5 text-xs sm:text-sm font-black uppercase tracking-wider border-b-2 whitespace-nowrap transition-all ${
-              mainTab === 'FAQ'
-                ? 'border-amber-400 text-amber-400 bg-amber-500/10 rounded-t-xl'
-                : 'border-transparent text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <HelpCircle className="w-4 h-4" />
-            <span className="hidden sm:inline">Preguntas Frecuentes</span>
-            <span className="sm:hidden">FAQ</span>
-          </button>
+        {/* ================= MAIN TABS DROPDOWN SELECTOR ================= */}
+        <div className="border-b border-slate-800 bg-[#071120] px-4 py-3">
+          <label htmlFor="guide-module-select" className="block text-[10px] font-extrabold text-amber-400 uppercase tracking-wider mb-1.5">
+            Seleccionar Sección de la Guía:
+          </label>
+          <div className="relative">
+            <select
+              id="guide-module-select"
+              value={mainTab}
+              onChange={(e) => {
+                const val = e.target.value as 'VIAJES' | 'ENCOMIENDAS' | 'SIMULADOR' | 'FAQ';
+                setMainTab(val);
+                setCurrentStep(1);
+                setSelectedHotspot(null);
+              }}
+              className="w-full appearance-none px-4 py-2.5 rounded-xl bg-slate-900 border border-amber-500/40 text-white font-bold text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/50 pr-10 shadow-inner cursor-pointer"
+            >
+              <option value="VIAJES">1. Viajes de Pasajeros Puerta a Puerta</option>
+              <option value="ENCOMIENDAS">2. Encomiendas y Envíos Seguros</option>
+              <option value="SIMULADOR">3. Simulador Interactivo de Prueba</option>
+              <option value="FAQ">4. Preguntas Frecuentes (FAQ)</option>
+            </select>
+            <ChevronDown className="w-4 h-4 text-amber-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+          </div>
         </div>
 
         {/* ================= CONTROLES DE MODO DE VISTA (SOLO PARA VIAJES Y ENCOMIENDAS) ================= */}
@@ -627,50 +590,6 @@ export const UserGuideModal: React.FC<UserGuideModalProps> = ({
             </div>
           )}
 
-        </div>
-
-        {/* ================= FOOTER ACTIONS ================= */}
-        <div className="p-3.5 sm:p-4 border-t border-slate-800/90 bg-[#06101E] flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div className="flex items-center gap-2 text-xs text-slate-400">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="font-medium">Soporte Central Activo 24/7 en Manabí</span>
-          </div>
-
-          <div className="flex items-center gap-2 w-full sm:w-auto">
-            {onStartBooking && (
-              <button
-                type="button"
-                onClick={() => {
-                  onClose();
-                  onStartBooking();
-                }}
-                className="flex-1 sm:flex-none px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs uppercase tracking-wider transition shadow-md active:scale-95"
-              >
-                Pedir Viaje
-              </button>
-            )}
-
-            {onStartShipment && (
-              <button
-                type="button"
-                onClick={() => {
-                  onClose();
-                  onStartShipment();
-                }}
-                className="flex-1 sm:flex-none px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-black text-xs uppercase tracking-wider transition shadow-md active:scale-95"
-              >
-                Enviar Encomienda
-              </button>
-            )}
-
-            <button
-              id="btn-close-guide-footer"
-              onClick={onClose}
-              className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs uppercase transition"
-            >
-              Cerrar
-            </button>
-          </div>
         </div>
 
       </div>

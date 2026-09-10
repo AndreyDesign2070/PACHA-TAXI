@@ -65,12 +65,14 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in">
-      <div className="w-full max-w-md rounded-3xl bg-[#0B192C] border border-amber-500/30 p-6 sm:p-8 text-white shadow-2xl relative">
-        {/* Official Brand Logo */}
-        <div className="flex flex-col items-center text-center mb-6">
-          <PachaLogo variant="full" size="md" showSubtitle={true} showRoute={true} className="mb-1" />
-          <h2 className="text-xl font-black text-white font-brand mt-2">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-sm p-2 sm:p-4 overflow-y-auto animate-in fade-in">
+      <div className="w-full max-w-lg rounded-3xl bg-[#0B192C] border-2 border-amber-500/30 p-4 sm:p-6 text-white shadow-2xl relative my-auto">
+        {/* Sleek, centered brand header with reduced height */}
+        <div className="flex flex-col items-center text-center mb-4">
+          <div className="flex items-center justify-center gap-2.5 mb-1">
+            <PachaLogo variant="compact" size="sm" showRoute={false} />
+          </div>
+          <h2 className="text-lg sm:text-xl font-black text-white font-brand mt-1">
             {settings.loginTitle || 'Iniciar Sesión'}
           </h2>
           <p className="text-[11px] text-slate-400">
@@ -80,19 +82,19 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 
         {/* Error alert */}
         {error && (
-          <div className="mb-4 p-3 rounded-xl bg-red-500/15 border border-red-500/40 text-red-300 text-xs flex items-center gap-2">
+          <div className="mb-3.5 p-2.5 rounded-xl bg-red-500/15 border border-red-500/40 text-red-300 text-xs flex items-center gap-2">
             <AlertCircle className="w-4 h-4 shrink-0 text-red-400" />
             <span>{error}</span>
           </div>
         )}
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
+        {/* Form - full width inputs */}
+        <form onSubmit={handleSubmit} className="space-y-3.5">
+          <div className="w-full">
+            <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1">
               Usuario o Cédula
             </label>
-            <div className="relative">
+            <div className="relative w-full">
               <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <input
                 id="input-login-identifier"
@@ -100,13 +102,13 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 value={identifier}
                 onChange={(e) => setIdentifier(e.target.value)}
                 placeholder="Ej. 1310857063 o cédula"
-                className="w-full pl-10 pr-4 py-3 rounded-xl bg-slate-900/90 border border-slate-700 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-amber-400 transition"
+                className="w-full pl-10 pr-4 py-2.5 sm:py-3 rounded-xl bg-slate-900/90 border border-slate-700 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-amber-400 transition"
               />
             </div>
           </div>
 
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
+          <div className="w-full">
+            <div className="flex items-center justify-between mb-1">
               <label className="text-xs font-bold text-slate-300 uppercase tracking-wider">
                 Contraseña
               </label>
@@ -122,7 +124,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 ¿Olvidaste tu contraseña?
               </button>
             </div>
-            <div className="relative">
+            <div className="relative w-full">
               <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <input
                 id="input-login-password"
@@ -130,7 +132,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full pl-10 pr-11 py-3 rounded-xl bg-slate-900/90 border border-slate-700 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-amber-400 transition"
+                className="w-full pl-10 pr-11 py-2.5 sm:py-3 rounded-xl bg-slate-900/90 border border-slate-700 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-amber-400 transition"
               />
               <button
                 type="button"
@@ -148,14 +150,14 @@ export const LoginModal: React.FC<LoginModalProps> = ({
             type="submit"
             id="btn-submit-login"
             disabled={isLoading}
-            className="w-full py-3.5 rounded-xl bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black text-sm tracking-wider uppercase shadow-lg shadow-amber-500/20 transition-all active:scale-95 disabled:opacity-50"
+            className="w-full py-3 rounded-xl bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black text-sm tracking-wider uppercase shadow-lg shadow-amber-500/20 transition-all active:scale-95 disabled:opacity-50"
           >
             {isLoading ? 'Verificando...' : 'ENTRAR A PACHA'}
           </button>
         </form>
 
         {/* Quick-Fill Chips for Evaluator Testing */}
-        <div className="mt-6 pt-5 border-t border-slate-800">
+        <div className="mt-4 pt-3.5 border-t border-slate-800">
           <p className="text-[11px] font-bold text-amber-400 uppercase tracking-wider mb-2 text-center">
             Accesos de prueba rápida:
           </p>

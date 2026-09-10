@@ -92,15 +92,15 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
           <div className="absolute w-96 h-96 rounded-full bg-blue-600/25 blur-3xl pointer-events-none animate-pulse" />
 
           {/* Centered Application Icon / Splash Logo */}
-          <div className="relative z-10 flex flex-col items-center justify-center scale-110 sm:scale-125 transition-transform duration-1000">
+          <div className="relative z-10 flex flex-col items-center justify-center transition-transform duration-1000">
             {splashLogo ? (
               <img
                 src={splashLogo}
                 alt={brandTitle}
-                className="max-h-36 max-w-[280px] object-contain drop-shadow-[0_25px_50px_rgba(0,0,0,0.95)]"
+                className="max-h-28 max-w-[220px] object-contain drop-shadow-[0_20px_40px_rgba(0,0,0,0.9)]"
               />
             ) : (
-              <PachaIcon size={160} className="drop-shadow-[0_25px_50px_rgba(0,0,0,0.95)]" />
+              <PachaIcon size={105} className="drop-shadow-[0_20px_40px_rgba(0,0,0,0.9)]" />
             )}
           </div>
 
@@ -148,9 +148,9 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
           <div className="relative z-10 flex flex-col items-center justify-center text-center my-auto">
             {/* 1. Ícono de la App (Punto 1: Isotipo) */}
             <div className="relative mb-2 sm:mb-3 animate-in zoom-in-95 duration-500">
-              <div className="absolute -inset-2.5 bg-amber-500/25 rounded-3xl blur-md opacity-80" />
-              <div className="relative z-10 p-3.5 sm:p-4 rounded-3xl bg-black/65 backdrop-blur-xl border-2 border-amber-500/40 shadow-[0_14px_45px_rgba(0,0,0,0.9)] flex items-center justify-center">
-                <PachaIcon size={88} className="sm:w-24 sm:h-24 drop-shadow-2xl" />
+              <div className="absolute -inset-2 bg-amber-500/25 rounded-3xl blur-md opacity-80" />
+              <div className="relative z-10 p-2.5 sm:p-3 rounded-3xl bg-black/65 backdrop-blur-xl border-2 border-amber-500/40 shadow-[0_14px_45px_rgba(0,0,0,0.9)] flex items-center justify-center">
+                <PachaIcon size={72} className="drop-shadow-2xl" />
               </div>
             </div>
             

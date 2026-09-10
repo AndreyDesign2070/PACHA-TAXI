@@ -66,49 +66,52 @@ export const PachaIcon: React.FC<PachaIconProps> = ({
         fill="url(#pachaIsotypeBg)" 
       />
 
-      {/* 1. The White "P" Loop */}
-      <path
-        d="M 325 152
-           L 660 152
-           C 805 152, 908 245, 908 373.5
-           C 908 502, 805 595, 660 595
-           L 392 595
-           L 470 435
-           L 648 435
-           C 715 435, 755 398, 755 357.5
-           C 755 317, 715 280, 648 280
-           L 246 280
-           Z"
-        fill="#FFFFFF"
-      />
+      {/* Drawing of P and Road centered with safe margins */}
+      <g transform="translate(500, 500) scale(0.76) translate(-500, -500)">
+        {/* 1. The White "P" Loop */}
+        <path
+          d="M 325 152
+             L 660 152
+             C 805 152, 908 245, 908 373.5
+             C 908 502, 805 595, 660 595
+             L 392 595
+             L 470 435
+             L 648 435
+             C 715 435, 755 398, 755 357.5
+             C 755 317, 715 280, 648 280
+             L 246 280
+             Z"
+          fill="#FFFFFF"
+        />
 
-      {/* 2. The Golden Yellow Highway Road */}
-      <path
-        d="M 105 845
-           C 135 695, 195 485, 345 408
-           C 415 375, 525 374, 646 376
-           C 530 381, 435 396, 370 452
-           C 308 518, 275 665, 232 845
-           Z"
-        fill="#FFB81C"
-      />
+        {/* 2. The Golden Yellow Highway Road */}
+        <path
+          d="M 105 845
+             C 135 695, 195 485, 345 408
+             C 415 375, 525 374, 646 376
+             C 530 381, 435 396, 370 452
+             C 308 518, 275 665, 232 845
+             Z"
+          fill="#FFB81C"
+        />
 
-      {/* 3. Highway Centerline Dashes in Deep Navy Blue */}
-      <g fill="#051636">
-        {/* Dash 1 (Lowest, nearest perspective) */}
-        <polygon points="160,798 178,793 198,720 180,725" />
-        {/* Dash 2 */}
-        <polygon points="198,665 215,660 238,595 221,600" />
-        {/* Dash 3 */}
-        <polygon points="248,545 264,540 295,483 280,488" />
-        {/* Dash 4 */}
-        <polygon points="320,448 333,443 378,411 366,416" />
-        {/* Dash 5 */}
-        <polygon points="410,399 420,396 468,384 459,387" />
-        {/* Dash 6 */}
-        <polygon points="500,381 508,379 542,377 535,379" />
-        {/* Dash 7 (Tip vanishing point) */}
-        <polygon points="562,377 568,376 588,376 583,377" />
+        {/* 3. Highway Centerline Dashes in Deep Navy Blue */}
+        <g fill="#051636">
+          {/* Dash 1 (Lowest, nearest perspective) */}
+          <polygon points="160,798 178,793 198,720 180,725" />
+          {/* Dash 2 */}
+          <polygon points="198,665 215,660 238,595 221,600" />
+          {/* Dash 3 */}
+          <polygon points="248,545 264,540 295,483 280,488" />
+          {/* Dash 4 */}
+          <polygon points="320,448 333,443 378,411 366,416" />
+          {/* Dash 5 */}
+          <polygon points="410,399 420,396 468,384 459,387" />
+          {/* Dash 6 */}
+          <polygon points="500,381 508,379 542,377 535,379" />
+          {/* Dash 7 (Tip vanishing point) */}
+          <polygon points="562,377 568,376 588,376 583,377" />
+        </g>
       </g>
     </svg>
   );

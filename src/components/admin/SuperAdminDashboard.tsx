@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   ShieldAlert,
   ShieldCheck,
@@ -53,6 +53,19 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
   const [adminUsername, setAdminUsername] = useState('');
   const [adminPassword, setAdminPassword] = useState('pacha2026');
   const [adminError, setAdminError] = useState<string | null>(null);
+
+  // Sub-tab inside Clientes (Clientes vs Conductores)
+  const [customerSubTab, setCustomerSubTab] = useState<'CLIENTS' | 'DRIVERS'>(
+    currentTab === 'super-drivers' ? 'DRIVERS' : 'CLIENTS'
+  );
+
+  useEffect(() => {
+    if (currentTab === 'super-drivers') {
+      setCustomerSubTab('DRIVERS');
+    } else if (currentTab === 'super-customers') {
+      setCustomerSubTab('CLIENTS');
+    }
+  }, [currentTab]);
 
   const refreshUsers = () => {
     setUsers(PachaStorage.getUsers());
@@ -174,87 +187,6 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
           <span>{feedbackMessage}</span>
         </div>
       )}
-
-      {/* Inner Synchronized Tab Bar */}
-      <div className="bg-[#0B192C] p-1.5 rounded-2xl border border-slate-800 flex items-center gap-1 overflow-x-auto">
-        <button
-          id="tab-super-dashboard"
-          onClick={() => handleSwitchTab('super-dashboard')}
-          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
-            activeView === 'DASHBOARD'
-              ? 'bg-purple-600 text-white shadow-md'
-              : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
-          }`}
-        >
-          <LayoutDashboard className="w-4 h-4" />
-          <span>Resumen General</span>
-        </button>
-
-        <button
-          id="tab-super-visual-editor"
-          onClick={() => handleSwitchTab('super-visual-editor')}
-          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
-            activeView === 'VISUAL_EDITOR'
-              ? 'bg-purple-600 text-white shadow-md'
-              : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
-          }`}
-        >
-          <Palette className="w-4 h-4 text-amber-400" />
-          <span>Edición Visual de la App</span>
-        </button>
-
-        <button
-          id="tab-super-admins"
-          onClick={() => handleSwitchTab('super-admins')}
-          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
-            activeView === 'ADMINS'
-              ? 'bg-purple-600 text-white shadow-md'
-              : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
-          }`}
-        >
-          <Shield className="w-4 h-4" />
-          <span>Cuentas de ADMIN ({adminUsers.length})</span>
-        </button>
-
-        <button
-          id="tab-super-customers"
-          onClick={() => handleSwitchTab('super-customers')}
-          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
-            activeView === 'CUSTOMERS'
-              ? 'bg-purple-600 text-white shadow-md'
-              : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
-          }`}
-        >
-          <Users className="w-4 h-4" />
-          <span>Clientes Registrados ({customerUsers.length})</span>
-        </button>
-
-        <button
-          id="tab-super-drivers"
-          onClick={() => handleSwitchTab('super-drivers')}
-          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
-            activeView === 'DRIVERS'
-              ? 'bg-purple-600 text-white shadow-md'
-              : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
-          }`}
-        >
-          <Car className="w-4 h-4" />
-          <span>Conductores & Flota ({driverUsers.length})</span>
-        </button>
-
-        <button
-          id="tab-super-reports"
-          onClick={() => handleSwitchTab('super-reports')}
-          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
-            activeView === 'REPORTS'
-              ? 'bg-purple-600 text-white shadow-md'
-              : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
-          }`}
-        >
-          <FileText className="w-4 h-4" />
-          <span>Auditoría & Métricas</span>
-        </button>
-      </div>
 
       {/* 1. VIEW: DASHBOARD OVERVIEW */}
       {activeView === 'DASHBOARD' && (
@@ -478,152 +410,186 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
         </div>
       )}
 
-      {/* 3. VIEW: CUSTOMERS */}
-      {activeView === 'CUSTOMERS' && (
-        <div className="p-5 rounded-3xl bg-[#0B192C] border border-slate-800 shadow-xl space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <h3 className="text-base font-bold text-white">Clientes y Pasajeros Registrados</h3>
-              <p className="text-xs text-slate-400">Total de {customerUsers.length} cuentas de clientes</p>
-            </div>
-            <div className="relative w-full sm:w-64">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Buscar cliente por nombre o cédula..."
-                className="w-full pl-9 pr-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white"
-              />
-            </div>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-slate-300">
-              <thead className="bg-slate-900/90 text-[10px] uppercase text-slate-400 border-b border-slate-800">
-                <tr>
-                  <th className="p-3">Cliente</th>
-                  <th className="p-3">Cédula</th>
-                  <th className="p-3">Teléfono</th>
-                  <th className="p-3">Viajes Realizados</th>
-                  <th className="p-3">Estado</th>
-                  <th className="p-3 text-right">Acciones</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800">
-                {customerUsers
-                  .filter((c) =>
-                    c.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                    (c.cedula && c.cedula.includes(searchQuery))
-                  )
-                  .map((c) => {
-                    const clientTrips = bookings.filter((b) => b.customerId === c.id || b.customerPhone === c.phone);
-                    return (
-                      <tr key={c.id} className="hover:bg-slate-900/40">
-                        <td className="p-3 font-semibold text-white">{c.fullName}</td>
-                        <td className="p-3 font-mono">{c.cedula || c.username}</td>
-                        <td className="p-3">{c.phone}</td>
-                        <td className="p-3 font-bold font-mono text-amber-400">{clientTrips.length} viajes</td>
-                        <td className="p-3">
-                          <span
-                            className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                              c.status === 'active'
-                                ? 'bg-emerald-500/20 text-emerald-300'
-                                : 'bg-red-500/20 text-red-300'
-                            }`}
-                          >
-                            {c.status.toUpperCase()}
-                          </span>
-                        </td>
-                        <td className="p-3 text-right">
-                          <button
-                            onClick={() => handleToggleSuspendUser(c)}
-                            className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-slate-800 hover:bg-slate-700 text-slate-300"
-                          >
-                            {c.status === 'active' ? 'Bloquear' : 'Desbloquear'}
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* 4. VIEW: DRIVERS & FLEET */}
-      {activeView === 'DRIVERS' && (
-        <div className="p-5 rounded-3xl bg-[#0B192C] border border-slate-800 shadow-xl space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <h3 className="text-base font-bold text-white">Conductores y Unidades de Flota</h3>
-              <p className="text-xs text-slate-400">Total de {driverUsers.length} conductores ejecutivos</p>
-            </div>
+      {/* 3. VIEW: CUSTOMERS & DRIVERS (Dentro de la pestaña Clientes del menú inferior) */}
+      {(activeView === 'CUSTOMERS' || activeView === 'DRIVERS') && (
+        <div className="p-5 rounded-3xl bg-[#0B192C] border border-slate-800 shadow-xl space-y-5">
+          {/* Sub-pestañas internas: Clientes Registrados y Conductores del Sistema */}
+          <div className="flex items-center gap-2 border-b border-slate-800 pb-3">
             <button
-              onClick={() => {
-                if (onSelectTab) onSelectTab('admin-drivers');
-              }}
-              className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs uppercase"
+              id="subtab-super-clients"
+              onClick={() => setCustomerSubTab('CLIENTS')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                customerSubTab === 'CLIENTS'
+                  ? 'bg-purple-600 text-white shadow-md'
+                  : 'bg-slate-900/80 text-slate-400 hover:text-white hover:bg-slate-800'
+              }`}
             >
-              Ver en Módulo Admin Flota
+              <Users className="w-4 h-4" />
+              <span>Clientes ({customerUsers.length})</span>
+            </button>
+
+            <button
+              id="subtab-super-drivers"
+              onClick={() => setCustomerSubTab('DRIVERS')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                customerSubTab === 'DRIVERS'
+                  ? 'bg-purple-600 text-white shadow-md'
+                  : 'bg-slate-900/80 text-slate-400 hover:text-white hover:bg-slate-800'
+              }`}
+            >
+              <Car className="w-4 h-4" />
+              <span>Conductores ({driverUsers.length})</span>
             </button>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-slate-300">
-              <thead className="bg-slate-900/90 text-[10px] uppercase text-slate-400 border-b border-slate-800">
-                <tr>
-                  <th className="p-3">Conductor</th>
-                  <th className="p-3">Cédula / Usuario</th>
-                  <th className="p-3">Teléfono</th>
-                  <th className="p-3">Vehículo Asignado</th>
-                  <th className="p-3">Estado</th>
-                  <th className="p-3 text-right">Control</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800">
-                {driverUsers.map((d) => {
-                  const assignedVeh = vehicles.find((v) => v.assignedDriverId === d.id);
-                  return (
-                    <tr key={d.id} className="hover:bg-slate-900/40">
-                      <td className="p-3 font-semibold text-white">{d.fullName}</td>
-                      <td className="p-3 font-mono text-slate-400">{d.cedula || d.username}</td>
-                      <td className="p-3">{d.phone}</td>
-                      <td className="p-3">
-                        {assignedVeh ? (
-                          <span className="font-semibold text-amber-300">
-                            {assignedVeh.model} ({assignedVeh.plate})
-                          </span>
-                        ) : (
-                          <span className="text-slate-500 italic">Sin unidad fija</span>
-                        )}
-                      </td>
-                      <td className="p-3">
-                        <span
-                          className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                            d.status === 'active'
-                              ? 'bg-emerald-500/20 text-emerald-300'
-                              : 'bg-red-500/20 text-red-300'
-                          }`}
-                        >
-                          {d.status.toUpperCase()}
-                        </span>
-                      </td>
-                      <td className="p-3 text-right space-x-2">
-                        <button
-                          onClick={() => handleToggleSuspendUser(d)}
-                          className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-slate-800 hover:bg-slate-700 text-slate-300"
-                        >
-                          {d.status === 'active' ? 'Suspender' : 'Reactivar'}
-                        </button>
-                      </td>
+          {/* Sub-pantalla 1: Clientes Registrados */}
+          {customerSubTab === 'CLIENTS' && (
+            <div className="space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-base font-bold text-white">Clientes y Pasajeros Registrados</h3>
+                  <p className="text-xs text-slate-400">Total de {customerUsers.length} cuentas de clientes</p>
+                </div>
+                <div className="relative w-full sm:w-64">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Buscar cliente por nombre o cédula..."
+                    className="w-full pl-9 pr-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white"
+                  />
+                </div>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs text-slate-300">
+                  <thead className="bg-slate-900/90 text-[10px] uppercase text-slate-400 border-b border-slate-800">
+                    <tr>
+                      <th className="p-3">Cliente</th>
+                      <th className="p-3">Cédula</th>
+                      <th className="p-3">Teléfono</th>
+                      <th className="p-3">Viajes Realizados</th>
+                      <th className="p-3">Estado</th>
+                      <th className="p-3 text-right">Acciones</th>
                     </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800">
+                    {customerUsers
+                      .filter((c) =>
+                        c.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                        (c.cedula && c.cedula.includes(searchQuery))
+                      )
+                      .map((c) => {
+                        const clientTrips = bookings.filter((b) => b.customerId === c.id || b.customerPhone === c.phone);
+                        return (
+                          <tr key={c.id} className="hover:bg-slate-900/40">
+                            <td className="p-3 font-semibold text-white">{c.fullName}</td>
+                            <td className="p-3 font-mono">{c.cedula || c.username}</td>
+                            <td className="p-3">{c.phone}</td>
+                            <td className="p-3 font-bold font-mono text-amber-400">{clientTrips.length} viajes</td>
+                            <td className="p-3">
+                              <span
+                                className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                  c.status === 'active'
+                                    ? 'bg-emerald-500/20 text-emerald-300'
+                                    : 'bg-red-500/20 text-red-300'
+                                }`}
+                              >
+                                {c.status.toUpperCase()}
+                              </span>
+                            </td>
+                            <td className="p-3 text-right">
+                              <button
+                                onClick={() => handleToggleSuspendUser(c)}
+                                className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-slate-800 hover:bg-slate-700 text-slate-300"
+                              >
+                                {c.status === 'active' ? 'Bloquear' : 'Desbloquear'}
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Sub-pantalla 2: Conductores del Sistema */}
+          {customerSubTab === 'DRIVERS' && (
+            <div className="space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-base font-bold text-white">Conductores y Unidades de Flota</h3>
+                  <p className="text-xs text-slate-400">Total de {driverUsers.length} conductores ejecutivos</p>
+                </div>
+                <button
+                  onClick={() => {
+                    if (onSelectTab) onSelectTab('admin-drivers');
+                  }}
+                  className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs uppercase"
+                >
+                  Ver en Módulo Admin Flota
+                </button>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs text-slate-300">
+                  <thead className="bg-slate-900/90 text-[10px] uppercase text-slate-400 border-b border-slate-800">
+                    <tr>
+                      <th className="p-3">Conductor</th>
+                      <th className="p-3">Cédula / Usuario</th>
+                      <th className="p-3">Teléfono</th>
+                      <th className="p-3">Vehículo Asignado</th>
+                      <th className="p-3">Estado</th>
+                      <th className="p-3 text-right">Control</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800">
+                    {driverUsers.map((d) => {
+                      const assignedVeh = vehicles.find((v) => v.assignedDriverId === d.id);
+                      return (
+                        <tr key={d.id} className="hover:bg-slate-900/40">
+                          <td className="p-3 font-semibold text-white">{d.fullName}</td>
+                          <td className="p-3 font-mono text-slate-400">{d.cedula || d.username}</td>
+                          <td className="p-3">{d.phone}</td>
+                          <td className="p-3">
+                            {assignedVeh ? (
+                              <span className="font-semibold text-amber-300">
+                                {assignedVeh.model} ({assignedVeh.plate})
+                              </span>
+                            ) : (
+                              <span className="text-slate-500 italic">Sin unidad fija</span>
+                            )}
+                          </td>
+                          <td className="p-3">
+                            <span
+                              className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                d.status === 'active'
+                                  ? 'bg-emerald-500/20 text-emerald-300'
+                                  : 'bg-red-500/20 text-red-300'
+                              }`}
+                            >
+                              {d.status.toUpperCase()}
+                            </span>
+                          </td>
+                          <td className="p-3 text-right space-x-2">
+                            <button
+                              onClick={() => handleToggleSuspendUser(d)}
+                              className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-slate-800 hover:bg-slate-700 text-slate-300"
+                            >
+                              {d.status === 'active' ? 'Suspender' : 'Reactivar'}
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
