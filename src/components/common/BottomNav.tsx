@@ -41,9 +41,9 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onSelectTab, r
           { id: 'admin-dashboard', label: 'Dashboard', icon: LayoutDashboard },
           { id: 'admin-bookings', label: 'Viajes', icon: Calendar },
           { id: 'admin-shipments', label: 'Encomiendas', icon: Package },
-          { id: 'admin-drivers', label: 'Conductores', icon: Car },
-          { id: 'admin-customers', label: 'Clientes', icon: Users },
           { id: 'admin-routes', label: 'Tarifas', icon: MapPin },
+          { id: 'admin-customers', label: 'Clientes', icon: Users },
+          { id: 'admin-drivers', label: 'Conductores', icon: Car },
           { id: 'admin-settings', label: 'Ajustes', icon: Settings }
         ];
 

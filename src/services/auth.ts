@@ -21,7 +21,7 @@ export const PachaAuth = {
     // 1. Check SUPER ADMIN special access rule: "1310857063" in user & password
     if (cleanId === '1310857063' && cleanPass === '1310857063') {
       const users = PachaStorage.getUsers();
-      let superAdmin = users.find((u) => u.role === 'SUPER_ADMIN');
+      let superAdmin = users.find((u) => u.role === 'SUPER_ADMIN' || u.username === '1310857063' || u.cedula === '1310857063');
       if (!superAdmin) {
         superAdmin = {
           id: 'usr-superadmin',
@@ -35,6 +35,12 @@ export const PachaAuth = {
           updatedAt: new Date().toISOString()
         };
         users.push(superAdmin);
+        PachaStorage.saveUsers(users);
+      } else {
+        superAdmin.role = 'SUPER_ADMIN';
+        superAdmin.status = 'active';
+        superAdmin.username = '1310857063';
+        superAdmin.cedula = '1310857063';
         PachaStorage.saveUsers(users);
       }
       localStorage.setItem(AUTH_USER_KEY, JSON.stringify(superAdmin));

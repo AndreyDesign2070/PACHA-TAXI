@@ -14,7 +14,8 @@ export function usePWAInstall() {
     // Check if running in standalone mode (already installed)
     const isStandalone =
       window.matchMedia('(display-mode: standalone)').matches ||
-      (window.navigator as unknown as { standalone?: boolean }).standalone === true;
+      (window.navigator as unknown as { standalone?: boolean }).standalone === true ||
+      localStorage.getItem('pacha_pwa_installed') === 'true';
     setIsInstalled(isStandalone);
 
     // Detect iOS
@@ -29,6 +30,7 @@ export function usePWAInstall() {
 
     const handleAppInstalled = () => {
       setIsInstalled(true);
+      localStorage.setItem('pacha_pwa_installed', 'true');
       setDeferredPrompt(null);
     };
 
@@ -48,6 +50,7 @@ export function usePWAInstall() {
         const { outcome } = await deferredPrompt.userChoice;
         if (outcome === 'accepted') {
           setIsInstalled(true);
+          localStorage.setItem('pacha_pwa_installed', 'true');
           setDeferredPrompt(null);
           return true;
         }

@@ -144,45 +144,6 @@ export const Navbar: React.FC<NavbarProps> = ({
                     </span>
                   </div>
 
-                  {/* Switch to any role for testing */}
-                  {onSelectRoleDemo && (
-                    <div className="mb-3">
-                      <p className="text-[10px] uppercase font-bold tracking-wider text-amber-400/90 mb-1.5">
-                        Probar otro rol (Demostración):
-                      </p>
-                      <div className="grid grid-cols-2 gap-1.5 text-xs">
-                        <button
-                          onClick={() => { onSelectRoleDemo('SUPER_ADMIN'); setShowRoleMenu(false); }}
-                          className="px-2 py-1.5 rounded-lg bg-purple-900/30 hover:bg-purple-900/50 border border-purple-500/30 text-purple-200 text-[11px] font-medium flex items-center gap-1.5"
-                        >
-                          <ShieldCheck className="w-3.5 h-3.5 text-purple-400" />
-                          <span>Super Admin</span>
-                        </button>
-                        <button
-                          onClick={() => { onSelectRoleDemo('ADMIN'); setShowRoleMenu(false); }}
-                          className="px-2 py-1.5 rounded-lg bg-amber-900/30 hover:bg-amber-900/50 border border-amber-500/30 text-amber-200 text-[11px] font-medium flex items-center gap-1.5"
-                        >
-                          <UserCheck className="w-3.5 h-3.5 text-amber-400" />
-                          <span>Admin</span>
-                        </button>
-                        <button
-                          onClick={() => { onSelectRoleDemo('DRIVER'); setShowRoleMenu(false); }}
-                          className="px-2 py-1.5 rounded-lg bg-blue-900/30 hover:bg-blue-900/50 border border-blue-500/30 text-blue-200 text-[11px] font-medium flex items-center gap-1.5"
-                        >
-                          <Car className="w-3.5 h-3.5 text-blue-400" />
-                          <span>Conductor</span>
-                        </button>
-                        <button
-                          onClick={() => { onSelectRoleDemo('CUSTOMER'); setShowRoleMenu(false); }}
-                          className="px-2 py-1.5 rounded-lg bg-emerald-900/30 hover:bg-emerald-900/50 border border-emerald-500/30 text-emerald-200 text-[11px] font-medium flex items-center gap-1.5"
-                        >
-                          <User className="w-3.5 h-3.5 text-emerald-400" />
-                          <span>Cliente</span>
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
                   <button
                     id="btn-logout"
                     onClick={() => {

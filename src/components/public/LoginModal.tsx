@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Lock, User, AlertCircle, Sparkles, KeyRound, ShieldAlert, Eye, EyeOff } from 'lucide-react';
+import { Lock, User, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { PachaAuth } from '../../services/auth';
 import { PachaStorage } from '../../services/storage';
 import { User as UserType } from '../../types';
@@ -60,15 +60,9 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     }, 300);
   };
 
-  const handleFillDemo = (userVal: string, passVal: string) => {
-    setIdentifier(userVal);
-    setPassword(passVal);
-    setError(null);
-  };
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-sm p-2 sm:p-4 overflow-y-auto animate-in fade-in">
-      <div className="w-full max-w-lg rounded-3xl bg-[#0B192C] border-2 border-amber-500/30 p-4 sm:p-6 text-white shadow-2xl relative my-auto">
+      <div className="w-full max-w-md rounded-3xl bg-[#0B192C] border-2 border-amber-500/30 p-5 sm:p-7 text-white shadow-2xl relative my-auto">
         {/* Sleek, centered brand header with reduced height */}
         <div className="flex flex-col items-center text-center mb-4">
           <div className="flex items-center justify-center gap-2.5 mb-1">
@@ -82,7 +76,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
           </p>
         </div>
 
-        {/* Custom prompt message (e.g. "POR FAVOR, INICIE SESION VIAJAR O ENVIAR") */}
+        {/* Custom prompt message (e.g. "POR FAVOR, INICIE SESION PARA PODER VIAJAR O ENVIAR UNA ENCOMIENDA") */}
         {promptMessage && (
           <div className="mb-3.5 p-3 rounded-2xl bg-amber-500/20 border-2 border-amber-400 text-amber-200 text-xs font-black tracking-wide flex items-center gap-2.5 shadow-lg">
             <AlertCircle className="w-5 h-5 shrink-0 text-amber-400" />
@@ -99,9 +93,9 @@ export const LoginModal: React.FC<LoginModalProps> = ({
         )}
 
         {/* Form - full width inputs */}
-        <form onSubmit={handleSubmit} className="space-y-3.5">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div className="w-full">
-            <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1">
+            <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
               Usuario o Cédula
             </label>
             <div className="relative w-full">
@@ -111,14 +105,15 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 type="text"
                 value={identifier}
                 onChange={(e) => setIdentifier(e.target.value)}
-                placeholder="Ej. 1310857063 o cédula"
+                placeholder="Ingresa tu usuario o cédula"
+                autoComplete="username"
                 className="w-full pl-10 pr-4 py-2.5 sm:py-3 rounded-xl bg-slate-900/90 border border-slate-700 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-amber-400 transition"
               />
             </div>
           </div>
 
           <div className="w-full">
-            <div className="flex items-center justify-between mb-1">
+            <div className="flex items-center justify-between mb-1.5">
               <label className="text-xs font-bold text-slate-300 uppercase tracking-wider">
                 Contraseña
               </label>
@@ -142,6 +137,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
+                autoComplete="current-password"
                 className="w-full pl-10 pr-11 py-2.5 sm:py-3 rounded-xl bg-slate-900/90 border border-slate-700 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-amber-400 transition"
               />
               <button
@@ -165,54 +161,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({
             {isLoading ? 'Verificando...' : 'ENTRAR A PACHA'}
           </button>
         </form>
-
-        {/* Quick-Fill Chips for Evaluator Testing */}
-        <div className="mt-4 pt-3.5 border-t border-slate-800">
-          <p className="text-[11px] font-bold text-amber-400 uppercase tracking-wider mb-2 text-center">
-            Accesos de prueba rápida:
-          </p>
-          <div className="grid grid-cols-2 gap-2 text-[11px]">
-            <button
-              type="button"
-              id="chip-login-superadmin"
-              onClick={() => handleFillDemo('1310857063', '1310857063')}
-              className="p-2 rounded-lg bg-purple-950/40 border border-purple-500/30 text-purple-200 hover:bg-purple-900/50 text-left"
-            >
-              <div className="font-bold text-purple-300">👑 Super Admin</div>
-              <div className="text-[10px] text-slate-400 font-mono">1310857063</div>
-            </button>
-
-            <button
-              type="button"
-              id="chip-login-admin"
-              onClick={() => handleFillDemo('admin', 'pacha2026')}
-              className="p-2 rounded-lg bg-amber-950/40 border border-amber-500/30 text-amber-200 hover:bg-amber-900/50 text-left"
-            >
-              <div className="font-bold text-amber-300">🏢 Admin</div>
-              <div className="text-[10px] text-slate-400 font-mono">admin / pacha2026</div>
-            </button>
-
-            <button
-              type="button"
-              id="chip-login-driver"
-              onClick={() => handleFillDemo('chofer1', 'pacha2026')}
-              className="p-2 rounded-lg bg-blue-950/40 border border-blue-500/30 text-blue-200 hover:bg-blue-900/50 text-left"
-            >
-              <div className="font-bold text-blue-300">🚗 Conductor</div>
-              <div className="text-[10px] text-slate-400 font-mono">chofer1 / pacha2026</div>
-            </button>
-
-            <button
-              type="button"
-              id="chip-login-customer"
-              onClick={() => handleFillDemo('1305544332', 'cliente123')}
-              className="p-2 rounded-lg bg-emerald-950/40 border border-emerald-500/30 text-emerald-200 hover:bg-emerald-900/50 text-left"
-            >
-              <div className="font-bold text-emerald-300">👤 Cliente Demo</div>
-              <div className="text-[10px] text-slate-400 font-mono">1305544332 / cliente123</div>
-            </button>
-          </div>
-        </div>
 
         {/* Register footer */}
         <div className="mt-5 text-center">
