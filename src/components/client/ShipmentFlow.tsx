@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { User as UserType, City, PaymentMethod, Shipment } from '../../types';
 import { PachaStorage } from '../../services/storage';
+import { BankTransferQrSection } from '../common/BankTransferQrSection';
 
 interface ShipmentFlowProps {
   currentUser: UserType | null;
@@ -57,7 +58,9 @@ export const ShipmentFlow: React.FC<ShipmentFlowProps> = ({
     e.preventDefault();
     setError(null);
 
+    // Require client login (User Prompt: "COMO CLIENTE NO DEBO PODER ENVIAR ENCOMIENDA NI RESERVAR VIAJE SI NO ME HE REGISTRADO/INICIADO SESION")
     if (!currentUser) {
+      setError('DEBE INICIAR SESIÓN PARA PODER CONTINUAR CON EL ENVÍO DE ENCOMIENDA');
       onOpenLogin();
       return;
     }
@@ -139,6 +142,23 @@ export const ShipmentFlow: React.FC<ShipmentFlowProps> = ({
           Entregas puerta a puerta con código de seguridad de 4 dígitos.
         </p>
       </div>
+
+      {/* Unauthenticated User Warning (User requirement: "DEBE APARECER EL AVISO QUE DEBO INICIAR SESION PARA PODER CONTINUAR CON EL VIAJE/ENCOMIENDA") */}
+      {!currentUser && (
+        <div className="mb-5 p-4 rounded-2xl bg-amber-500/20 border-2 border-amber-400 text-amber-200 text-xs font-black flex items-center justify-between gap-3 shadow-lg">
+          <div className="flex items-center gap-2.5">
+            <AlertCircle className="w-5 h-5 text-amber-400 shrink-0" />
+            <span>DEBE INICIAR SESIÓN PARA PODER CONTINUAR CON EL ENVÍO DE ENCOMIENDA</span>
+          </div>
+          <button
+            type="button"
+            onClick={onOpenLogin}
+            className="px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs uppercase shrink-0 transition"
+          >
+            Iniciar Sesión
+          </button>
+        </div>
+      )}
 
       {error && (
         <div className="mb-4 p-3 rounded-xl bg-red-500/15 border border-red-500/40 text-red-300 text-xs flex items-center gap-2">
@@ -324,44 +344,12 @@ export const ShipmentFlow: React.FC<ShipmentFlowProps> = ({
               </button>
             </div>
 
-            {/* Transfer Details Card */}
+            {/* Transfer Details Card with Bank QR Section (User requirement: "ESOS QR DEBEN APARECERLE AL CLIENTE CUANDO SELECCIONA LA OPCION TRANSFERENCIA PARA QUE PUEDA ESCANEAR Y LO LLEVE DIRECTO A PAGAR") */}
             {paymentMethod === 'TRANSFER' && (
-              <div className="mt-3 p-4 rounded-2xl bg-slate-950/90 border border-amber-500/40 space-y-3 animate-in fade-in">
-                <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-                  <h5 className="text-xs font-black text-amber-400 uppercase tracking-wider flex items-center gap-2">
-                    <Building2 className="w-4 h-4 text-amber-400" />
-                    <span>Datos Bancarios Oficiales de PACHA</span>
-                  </h5>
-                  <span className="text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20 font-bold">
-                    Verificada
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2.5 text-xs text-slate-300">
-                  <div>
-                    <span className="text-slate-400 text-[10px] uppercase font-bold block">Banco</span>
-                    <span className="font-bold text-white text-xs">{settings.bankName || 'Banco Pichincha'}</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 text-[10px] uppercase font-bold block">Tipo de Cuenta</span>
-                    <span className="font-bold text-white text-xs">{settings.bankType || 'Cuenta Corriente'}</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 text-[10px] uppercase font-bold block">Número de Cuenta</span>
-                    <span className="font-mono font-bold text-amber-300 text-sm">{settings.bankAccount || '2100889922'}</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 text-[10px] uppercase font-bold block">Titular / Empresa</span>
-                    <span className="font-semibold text-white text-xs">{settings.bankHolder || 'PACHA TRANSPORTE EJECUTIVO CIA. LTDA.'}</span>
-                  </div>
-                  <div className="col-span-2">
-                    <span className="text-slate-400 text-[10px] uppercase font-bold block">RUC de la Empresa</span>
-                    <span className="font-mono font-bold text-white text-xs">{settings.bankIdNumber || '1391827364001'}</span>
-                  </div>
-                </div>
-
-                <p className="text-[11px] text-amber-300/90 bg-amber-500/10 p-2.5 rounded-xl border border-amber-500/20">
-                  ℹ️ Realiza la transferencia de <strong>${totalPrice.toFixed(2)}</strong>. Al entregar el paquete o entregárselo al conductor, muestra tu comprobante digital de transferencia.
+              <div className="mt-3 space-y-3 animate-in fade-in">
+                <BankTransferQrSection settings={settings} amount={totalPrice} />
+                <p className="text-[11px] text-amber-300/90 bg-amber-500/10 p-3 rounded-xl border border-amber-500/20">
+                  ℹ️ Realiza la transferencia de <strong>${totalPrice.toFixed(2)}</strong> mediante el código QR (DeUna Pichincha o Guayaquil). Al entregar el paquete al conductor, muestra tu comprobante digital de transferencia.
                 </p>
               </div>
             )}
@@ -451,16 +439,8 @@ export const ShipmentFlow: React.FC<ShipmentFlowProps> = ({
             </div>
 
             {confirmedShipment.paymentMethod === 'TRANSFERENCIA' && (
-              <div className="mt-3 p-3 rounded-xl bg-slate-950 border border-amber-500/30 text-[11px] space-y-1">
-                <span className="text-amber-400 font-bold block uppercase tracking-wider">
-                  Recordatorio Datos Bancarios para Transferencia:
-                </span>
-                <p className="text-slate-300">
-                  {settings.bankName} • {settings.bankType}: <span className="font-mono font-bold text-white">{settings.bankAccount}</span>
-                </p>
-                <p className="text-slate-400 text-[10px]">
-                  Titular: {settings.bankHolder} (RUC: {settings.bankIdNumber || '1391827364001'})
-                </p>
+              <div className="mt-3">
+                <BankTransferQrSection settings={settings} amount={confirmedShipment.price} />
               </div>
             )}
           </div>

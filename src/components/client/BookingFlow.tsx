@@ -13,10 +13,12 @@ import {
   ArrowLeft,
   DollarSign,
   UploadCloud,
-  FileText
+  FileText,
+  Sparkles
 } from 'lucide-react';
 import { User, City, PaymentMethod, Booking } from '../../types';
 import { PachaStorage } from '../../services/storage';
+import { BankTransferQrSection } from '../common/BankTransferQrSection';
 
 interface BookingFlowProps {
   currentUser: User | null;
@@ -61,11 +63,19 @@ export const BookingFlow: React.FC<BookingFlowProps> = ({
     : null;
 
   const basePrice = currentFare ? currentFare.passengerPrice : 0;
-  // If passenger wants executive private ride or additional seats, total calculated based on rate
-  const totalPrice = basePrice * passengerCount;
+  // Requirement 1: The fare assigned by admin is unique for 1 single passenger.
+  // For each extra passenger, $3 is automatically added:
+  const extraPassengers = Math.max(0, passengerCount - 1);
+  const extraPassengerFee = extraPassengers * 3;
+  const totalPrice = basePrice > 0 ? basePrice + extraPassengerFee : 0;
 
   const handleNextStep1 = () => {
     setError(null);
+    if (!currentUser) {
+      setError('DEBE INICIAR SESIÓN PARA PODER CONTINUAR CON EL VIAJE');
+      onOpenLogin();
+      return;
+    }
     if (!originCityId || !destinationCityId) {
       setError('Seleccione ciudad de origen y ciudad de destino habilitadas.');
       return;
@@ -87,6 +97,11 @@ export const BookingFlow: React.FC<BookingFlowProps> = ({
 
   const handleNextStep2 = () => {
     setError(null);
+    if (!currentUser) {
+      setError('DEBE INICIAR SESIÓN PARA PODER CONTINUAR CON EL VIAJE');
+      onOpenLogin();
+      return;
+    }
     if (!travelDate) {
       setError('Seleccione una fecha de viaje válida.');
       return;
@@ -105,8 +120,9 @@ export const BookingFlow: React.FC<BookingFlowProps> = ({
   const handleConfirmReservation = () => {
     setError(null);
 
-    // Require client login
+    // Require client login (User Prompt: "COMO CLIENTE NO DEBO PODER ENVIAR ENCOMIENDA NI RESERVAR VIAJE SI NO ME HE REGISTRADO/INICIADO SESION")
     if (!currentUser) {
+      setError('DEBE INICIAR SESIÓN PARA PODER CONTINUAR CON EL VIAJE');
       onOpenLogin();
       return;
     }
@@ -211,6 +227,23 @@ export const BookingFlow: React.FC<BookingFlowProps> = ({
           />
         </div>
       </div>
+
+      {/* Unauthenticated User Warning (User requirement: "DEBE APARECER EL AVISO QUE DEBO INICIAR SESION PARA PODER CONTINUAR CON EL VIAJE/ENCOMIENDA") */}
+      {!currentUser && (
+        <div className="mb-5 p-4 rounded-2xl bg-amber-500/20 border-2 border-amber-400 text-amber-200 text-xs font-black flex items-center justify-between gap-3 shadow-lg">
+          <div className="flex items-center gap-2.5">
+            <AlertCircle className="w-5 h-5 text-amber-400 shrink-0" />
+            <span>DEBE INICIAR SESIÓN PARA PODER CONTINUAR CON SU RESERVA DE VIAJE</span>
+          </div>
+          <button
+            type="button"
+            onClick={onOpenLogin}
+            className="px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs uppercase shrink-0 transition"
+          >
+            Iniciar Sesión
+          </button>
+        </div>
+      )}
 
       {error && (
         <div className="mb-4 p-3 rounded-xl bg-red-500/15 border border-red-500/40 text-red-300 text-xs flex items-center gap-2">
@@ -372,6 +405,12 @@ export const BookingFlow: React.FC<BookingFlowProps> = ({
             <p className="text-[11px] text-slate-400 mt-1">
               Todos los vehículos ejecutivos de PACHA cuentan con aire acondicionado y capacidad máxima para 4 pasajeros para asegurar comodidad total.
             </p>
+            <div className="mt-2 p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs flex items-center gap-2">
+              <Sparkles className="w-4 h-4 shrink-0 text-amber-400" />
+              <span>
+                <strong>Tarifa única:</strong> La tarifa fijada cubre 1 pasajero. Por cada pasajero adicional se suman automáticamente solo <strong>$3.00</strong>.
+              </span>
+            </div>
           </div>
 
           {/* Additional Notes */}
@@ -436,12 +475,23 @@ export const BookingFlow: React.FC<BookingFlowProps> = ({
 
             <div className="mt-3 space-y-1.5 text-xs text-slate-300">
               <div className="flex justify-between">
-                <span>Tarifa oficial por pasajero:</span>
+                <span>Tarifa de viaje (1 solo pasajero):</span>
                 <span className="font-semibold text-white">${basePrice.toFixed(2)}</span>
               </div>
+              {extraPassengers > 0 ? (
+                <div className="flex justify-between text-amber-300">
+                  <span>Pasajeros adicionales ({extraPassengers} × $3.00 c/u):</span>
+                  <span className="font-bold font-mono">+${extraPassengerFee.toFixed(2)}</span>
+                </div>
+              ) : (
+                <div className="flex justify-between text-slate-400 text-[11px]">
+                  <span>Pasajeros adicionales:</span>
+                  <span>Sin costo extra (1 pasajero)</span>
+                </div>
+              )}
               <div className="flex justify-between">
-                <span>Número de pasajeros:</span>
-                <span className="font-semibold text-white">{passengerCount}</span>
+                <span>Total de pasajeros:</span>
+                <span className="font-semibold text-white">{passengerCount} {passengerCount === 1 ? 'persona' : 'personas'}</span>
               </div>
               <div className="flex justify-between text-slate-400 text-[11px]">
                 <span>Tiempo estimado de viaje:</span>
@@ -502,49 +552,31 @@ export const BookingFlow: React.FC<BookingFlowProps> = ({
             </div>
           </div>
 
-          {/* If Transfer: Show Bank Details */}
+          {/* If Transfer: Show Bank QR Section and Bank Details (User requirement: "ESOS QR DEBEN APARECERLE AL CLIENTE CUANDO SELECCIONA LA OPCION TRANSFERENCIA PARA QUE PUEDA ESCANEAR Y LO LLEVE DIRECTO A PAGAR") */}
           {paymentMethod === 'TRANSFER' && (
-            <div className="p-4 rounded-2xl bg-slate-900 border border-amber-500/30 space-y-3">
-              <h5 className="text-xs font-bold text-amber-400 uppercase tracking-wider">
-                Datos Bancarios Oficiales de PACHA
-              </h5>
-              <div className="grid grid-cols-2 gap-2 text-xs text-slate-300">
-                <div>
-                  <span className="text-slate-500 text-[10px] block">Banco:</span>
-                  <span className="font-semibold text-white">{settings.bankName || 'Banco Pichincha'}</span>
-                </div>
-                <div>
-                  <span className="text-slate-500 text-[10px] block">Tipo de Cuenta:</span>
-                  <span className="font-semibold text-white">{settings.bankType || 'Cuenta Corriente'}</span>
-                </div>
-                <div>
-                  <span className="text-slate-500 text-[10px] block">Número de Cuenta:</span>
-                  <span className="font-mono font-bold text-amber-300">{settings.bankAccount || '2100889922'}</span>
-                </div>
-                <div>
-                  <span className="text-slate-500 text-[10px] block">Beneficiario:</span>
-                  <span className="font-semibold text-white">{settings.bankHolder || 'PACHA TRANSPORTE EJECUTIVO'}</span>
-                </div>
-                <div className="col-span-2">
-                  <span className="text-slate-500 text-[10px] block">RUC / Cédula:</span>
-                  <span className="font-mono font-semibold text-white">1391827364001</span>
-                </div>
-              </div>
+            <div className="space-y-4">
+              <BankTransferQrSection
+                settings={settings}
+                amount={totalPrice}
+              />
 
               {/* Upload Receipt Input */}
-              <div className="pt-2 border-t border-slate-800">
-                <label className="block text-[11px] font-bold text-slate-300 mb-1">
+              <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 space-y-2">
+                <label className="block text-xs font-bold text-slate-300">
                   Comprobante de Transferencia (Foto o Captura)
                 </label>
+                <p className="text-[11px] text-slate-400">
+                  Adjunta el comprobante emitido por tu banco tras realizar la transferencia o escaneo del código QR.
+                </p>
                 <input
                   id="input-transfer-receipt"
                   type="file"
                   accept="image/*"
                   onChange={handleReceiptUpload}
-                  className="text-xs text-slate-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-amber-500 file:text-slate-950 hover:file:bg-amber-400"
+                  className="text-xs text-slate-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-amber-500 file:text-slate-950 hover:file:bg-amber-400 cursor-pointer"
                 />
                 {transferReceipt && (
-                  <p className="text-[11px] text-emerald-400 mt-1 flex items-center gap-1">
+                  <p className="text-[11px] text-emerald-400 mt-1 flex items-center gap-1 font-bold">
                     <CheckCircle className="w-3.5 h-3.5" />
                     <span>Comprobante adjuntado correctamente</span>
                   </p>

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Upload,
   Trash2,
@@ -12,10 +12,12 @@ import {
   BookOpen,
   Image as ImageIcon,
   Save,
-  Check
+  Check,
+  Loader2
 } from 'lucide-react';
 import { AppSettings } from '../../types';
 import { PachaStorage } from '../../services/storage';
+import { optimizeImageFile } from '../../utils/imageOptimizer';
 import {
   RouteSelectionIllustration,
   CarComfortIllustration,
@@ -38,6 +40,7 @@ export const GuideStepsEditor: React.FC<GuideStepsEditorProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<'VIAJES' | 'ENCOMIENDAS' | 'CONSEJOS'>('VIAJES');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [uploadingField, setUploadingField] = useState<keyof AppSettings | null>(null);
   const [savedSuccess, setSavedSuccess] = useState(false);
 
   // Hidden file inputs for each step
@@ -48,90 +51,71 @@ export const GuideStepsEditor: React.FC<GuideStepsEditorProps> = ({
   const shipment2Ref = useRef<HTMLInputElement>(null);
   const shipment3Ref = useRef<HTMLInputElement>(null);
 
-  // Compress & convert uploaded file to high-res Base64 Data URL
-  const processImage = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      if (file.type === 'image/svg+xml') {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = (err) => reject(err);
-        reader.readAsDataURL(file);
-        return;
-      }
-
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const img = new Image();
-        img.onload = () => {
-          const maxWidth = 1400;
-          const maxHeight = 1000;
-          let width = img.width;
-          let height = img.height;
-
-          if (width > maxWidth || height > maxHeight) {
-            if (width / maxWidth > height / maxHeight) {
-              height = Math.round((height * maxWidth) / width);
-              width = maxWidth;
-            } else {
-              width = Math.round((width * maxHeight) / height);
-              height = maxHeight;
-            }
-          }
-
-          const canvas = document.createElement('canvas');
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          if (!ctx) {
-            resolve(reader.result as string);
-            return;
-          }
-
-          ctx.drawImage(img, 0, 0, width, height);
-          const dataUrl = canvas.toDataURL(file.type === 'image/png' ? 'image/png' : 'image/jpeg', 0.90);
-          resolve(dataUrl);
-        };
-        img.onerror = () => reject(new Error('No se pudo procesar la imagen'));
-        img.src = e.target?.result as string;
-      };
-      reader.onerror = (err) => reject(err);
-      reader.readAsDataURL(file);
+  // Sync latest settings when storage changes remotely or locally
+  useEffect(() => {
+    const unsub = PachaStorage.subscribe(() => {
+      onUpdateSettings(PachaStorage.getSettings());
     });
+    return unsub;
+  }, [onUpdateSettings]);
+
+  const processAndSaveStepImage = async (
+    file: File,
+    field: keyof AppSettings,
+    stepName: string
+  ) => {
+    if (!file) return;
+
+    // Validate that the file is an image
+    if (!file.type.startsWith('image/')) {
+      alert('Por favor seleccione un archivo de imagen válido (JPG, PNG, WebP o SVG).');
+      return;
+    }
+
+    setUploadingField(field);
+    setIsProcessing(true);
+    try {
+      console.info(`[PACHA GuideSteps] Procesando imagen para "${stepName}" (${file.name}, ${(file.size / 1024).toFixed(1)} KB)...`);
+      const dataUrl = await optimizeImageFile(file, 850, 540, 0.78);
+      const latest = PachaStorage.getSettings();
+      const updated = { ...latest, ...settings, [field]: dataUrl };
+      onUpdateSettings(updated);
+      const saved = await PachaStorage.saveSettings(updated);
+      onUpdateSettings(saved);
+
+      const msg = `¡Imagen para "${stepName}" subida y sincronizada en tiempo real!`;
+      if (onNotify) onNotify(msg);
+      setSavedSuccess(true);
+      setTimeout(() => setSavedSuccess(false), 3500);
+    } catch (err: any) {
+      console.error('[PACHA GuideSteps] Error subiendo imagen de paso:', err);
+      const errMsg = err?.message || 'Error desconocido al procesar la imagen.';
+      alert(`No se pudo procesar la imagen: ${errMsg}\nIntente con otra imagen JPG o PNG.`);
+    } finally {
+      setIsProcessing(false);
+      setUploadingField(null);
+    }
   };
 
-  const handleUploadStepImage = async (
+  const handleUploadStepImage = (
     e: React.ChangeEvent<HTMLInputElement>,
     field: keyof AppSettings,
     stepName: string
   ) => {
     const file = e.target.files?.[0];
-    if (!file) return;
     e.target.value = '';
-
-    setIsProcessing(true);
-    try {
-      const dataUrl = await processImage(file);
-      const updated = { ...settings, [field]: dataUrl };
-      onUpdateSettings(updated);
-      PachaStorage.saveSettings(updated);
-
-      const msg = `¡Imagen personalizada para "${stepName}" subida y guardada con éxito!`;
-      if (onNotify) onNotify(msg);
-      setSavedSuccess(true);
-      setTimeout(() => setSavedSuccess(false), 3000);
-    } catch (err) {
-      console.error('Error subiendo imagen de paso:', err);
-      alert('Ocurrió un error al procesar la imagen. Por favor intente con una imagen JPG, PNG o SVG.');
-    } finally {
-      setIsProcessing(false);
+    if (file) {
+      processAndSaveStepImage(file, field, stepName);
     }
   };
 
-  const handleRemoveStepImage = (field: keyof AppSettings, stepName: string) => {
+  const handleRemoveStepImage = async (field: keyof AppSettings, stepName: string) => {
     if (window.confirm(`¿Desea eliminar la imagen personalizada de "${stepName}" y restaurar la ilustración vectorial original?`)) {
-      const updated = { ...settings, [field]: '' };
+      const latest = PachaStorage.getSettings();
+      const updated = { ...latest, ...settings, [field]: '' };
       onUpdateSettings(updated);
-      PachaStorage.saveSettings(updated);
+      const saved = await PachaStorage.saveSettings(updated);
+      onUpdateSettings(saved);
       const msg = `Se restauró la ilustración original para "${stepName}".`;
       if (onNotify) onNotify(msg);
     }
@@ -142,11 +126,21 @@ export const GuideStepsEditor: React.FC<GuideStepsEditorProps> = ({
     onUpdateSettings(updated);
   };
 
-  const handleSaveAll = () => {
-    PachaStorage.saveSettings(settings);
-    setSavedSuccess(true);
-    if (onNotify) onNotify('¡Guía de clientes actualizada y sincronizada en toda la aplicación!');
-    setTimeout(() => setSavedSuccess(false), 3500);
+  const handleSaveAll = async () => {
+    setIsProcessing(true);
+    try {
+      const latest = PachaStorage.getSettings();
+      const merged = { ...latest, ...settings };
+      const saved = await PachaStorage.saveSettings(merged);
+      onUpdateSettings(saved);
+      setSavedSuccess(true);
+      if (onNotify) onNotify('¡Guía de clientes actualizada y sincronizada en toda la aplicación!');
+      setTimeout(() => setSavedSuccess(false), 3500);
+    } catch (err) {
+      console.error('[PACHA GuideSteps] Error guardando guía:', err);
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const handleOpenLiveGuide = () => {
@@ -311,10 +305,12 @@ export const GuideStepsEditor: React.FC<GuideStepsEditorProps> = ({
             titleValue={settings.guideTravelStep1Title ?? ''}
             subtitleValue={settings.guideTravelStep1Subtitle ?? ''}
             descValue={settings.guideTravelStep1Desc ?? ''}
+            isUploading={uploadingField === 'guideTravelStep1Img'}
             onTitleChange={(v) => handleTextChange('guideTravelStep1Title', v)}
             onSubtitleChange={(v) => handleTextChange('guideTravelStep1Subtitle', v)}
             onDescChange={(v) => handleTextChange('guideTravelStep1Desc', v)}
             onUploadClick={() => travel1Ref.current?.click()}
+            onDropFile={(file) => processAndSaveStepImage(file, 'guideTravelStep1Img', 'Viajes - Paso 1')}
             onRemoveClick={() => handleRemoveStepImage('guideTravelStep1Img', 'Paso 1: SELECCIONAR TU RUTA Y DIRECCIONES')}
             defaultIllustration={<RouteSelectionIllustration />}
             designTip="Diseña una imagen mostrando el mapa de Manabí con la selección de ciudades y la dirección exacta de recogida con GPS."
@@ -331,10 +327,12 @@ export const GuideStepsEditor: React.FC<GuideStepsEditorProps> = ({
             titleValue={settings.guideTravelStep2Title ?? ''}
             subtitleValue={settings.guideTravelStep2Subtitle ?? ''}
             descValue={settings.guideTravelStep2Desc ?? ''}
+            isUploading={uploadingField === 'guideTravelStep2Img'}
             onTitleChange={(v) => handleTextChange('guideTravelStep2Title', v)}
             onSubtitleChange={(v) => handleTextChange('guideTravelStep2Subtitle', v)}
             onDescChange={(v) => handleTextChange('guideTravelStep2Desc', v)}
             onUploadClick={() => travel2Ref.current?.click()}
+            onDropFile={(file) => processAndSaveStepImage(file, 'guideTravelStep2Img', 'Viajes - Paso 2')}
             onRemoveClick={() => handleRemoveStepImage('guideTravelStep2Img', 'Paso 2: SELECCIONAR FECHA, HORA DEL VIAJE Y CANTIDAD DE PASAJEROS')}
             defaultIllustration={<CarComfortIllustration />}
             designTip="Muestra el calendario y reloj de horarios, los asientos reclinables, el aire acondicionado y la opción de 1 a 4 pasajeros."
@@ -351,10 +349,12 @@ export const GuideStepsEditor: React.FC<GuideStepsEditorProps> = ({
             titleValue={settings.guideTravelStep3Title ?? ''}
             subtitleValue={settings.guideTravelStep3Subtitle ?? ''}
             descValue={settings.guideTravelStep3Desc ?? ''}
+            isUploading={uploadingField === 'guideTravelStep3Img'}
             onTitleChange={(v) => handleTextChange('guideTravelStep3Title', v)}
             onSubtitleChange={(v) => handleTextChange('guideTravelStep3Subtitle', v)}
             onDescChange={(v) => handleTextChange('guideTravelStep3Desc', v)}
             onUploadClick={() => travel3Ref.current?.click()}
+            onDropFile={(file) => processAndSaveStepImage(file, 'guideTravelStep3Img', 'Viajes - Paso 3')}
             onRemoveClick={() => handleRemoveStepImage('guideTravelStep3Img', 'Paso 3: SELECCIONAR EL TIPO DE PAGO Y CONFIRMAR EL VIAJE')}
             defaultIllustration={<TicketAndQRIllustration />}
             designTip="Diseña una imagen con los métodos de pago (efectivo y transferencia), el botón de confirmación de viaje y el boleto digital con código QR."
@@ -376,10 +376,12 @@ export const GuideStepsEditor: React.FC<GuideStepsEditorProps> = ({
             titleValue={settings.guideShipmentStep1Title ?? ''}
             subtitleValue={settings.guideShipmentStep1Subtitle ?? ''}
             descValue={settings.guideShipmentStep1Desc ?? ''}
+            isUploading={uploadingField === 'guideShipmentStep1Img'}
             onTitleChange={(v) => handleTextChange('guideShipmentStep1Title', v)}
             onSubtitleChange={(v) => handleTextChange('guideShipmentStep1Subtitle', v)}
             onDescChange={(v) => handleTextChange('guideShipmentStep1Desc', v)}
             onUploadClick={() => shipment1Ref.current?.click()}
+            onDropFile={(file) => processAndSaveStepImage(file, 'guideShipmentStep1Img', 'Encomiendas - Paso 1')}
             onRemoveClick={() => handleRemoveStepImage('guideShipmentStep1Img', 'Paso 1: REGISTRA TU PAQUETE Y REMITENTE')}
             defaultIllustration={<SecurityCodeIllustration />}
             designTip="Muestra paquetes empaquetados cuidadosamente, sobres de documentos y el formulario de registro de remitente y destinatario."
@@ -396,10 +398,12 @@ export const GuideStepsEditor: React.FC<GuideStepsEditorProps> = ({
             titleValue={settings.guideShipmentStep2Title ?? ''}
             subtitleValue={settings.guideShipmentStep2Subtitle ?? ''}
             descValue={settings.guideShipmentStep2Desc ?? ''}
+            isUploading={uploadingField === 'guideShipmentStep2Img'}
             onTitleChange={(v) => handleTextChange('guideShipmentStep2Title', v)}
             onSubtitleChange={(v) => handleTextChange('guideShipmentStep2Subtitle', v)}
             onDescChange={(v) => handleTextChange('guideShipmentStep2Desc', v)}
             onUploadClick={() => shipment2Ref.current?.click()}
+            onDropFile={(file) => processAndSaveStepImage(file, 'guideShipmentStep2Img', 'Encomiendas - Paso 2')}
             onRemoveClick={() => handleRemoveStepImage('guideShipmentStep2Img', 'Paso 2: GENERACION DEL CODIGO SECRETO DE 4 DIGITOS')}
             defaultIllustration={<SecurityCodeIllustration />}
             designTip="Enfócate en la seguridad: un candado, escudo o caja fuerte destacando los 4 dígitos que protegen la encomienda."
@@ -416,10 +420,12 @@ export const GuideStepsEditor: React.FC<GuideStepsEditorProps> = ({
             titleValue={settings.guideShipmentStep3Title ?? ''}
             subtitleValue={settings.guideShipmentStep3Subtitle ?? ''}
             descValue={settings.guideShipmentStep3Desc ?? ''}
+            isUploading={uploadingField === 'guideShipmentStep3Img'}
             onTitleChange={(v) => handleTextChange('guideShipmentStep3Title', v)}
             onSubtitleChange={(v) => handleTextChange('guideShipmentStep3Subtitle', v)}
             onDescChange={(v) => handleTextChange('guideShipmentStep3Desc', v)}
             onUploadClick={() => shipment3Ref.current?.click()}
+            onDropFile={(file) => processAndSaveStepImage(file, 'guideShipmentStep3Img', 'Encomiendas - Paso 3')}
             onRemoveClick={() => handleRemoveStepImage('guideShipmentStep3Img', 'Paso 3: ENTREGA VERIFICADA EN MANO Y CIERRE SEGURO')}
             defaultIllustration={<PackageDeliveryIllustration />}
             designTip="Ilustra la entrega formal y segura del chofer al cliente validando el código de 4 dígitos."
@@ -498,10 +504,12 @@ interface StepCardProps {
   titleValue: string;
   subtitleValue: string;
   descValue: string;
+  isUploading?: boolean;
   onTitleChange: (v: string) => void;
   onSubtitleChange: (v: string) => void;
   onDescChange: (v: string) => void;
   onUploadClick: () => void;
+  onDropFile?: (file: File) => void;
   onRemoveClick: () => void;
   defaultIllustration: React.ReactNode;
   designTip: string;
@@ -517,14 +525,18 @@ const StepCard: React.FC<StepCardProps> = ({
   titleValue,
   subtitleValue,
   descValue,
+  isUploading,
   onTitleChange,
   onSubtitleChange,
   onDescChange,
   onUploadClick,
+  onDropFile,
   onRemoveClick,
   defaultIllustration,
   designTip
 }) => {
+  const [isDragOver, setIsDragOver] = useState(false);
+
   return (
     <div className="p-5 sm:p-6 rounded-3xl bg-[#071322] border-2 border-slate-800 hover:border-amber-500/30 transition-all shadow-xl space-y-5">
       {/* Header del Paso */}
@@ -546,7 +558,12 @@ const StepCard: React.FC<StepCardProps> = ({
         </div>
 
         <div>
-          {customImgUrl ? (
+          {isUploading ? (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 animate-pulse">
+              <Loader2 className="w-3.5 h-3.5 text-amber-400 animate-spin" />
+              Guardando imagen...
+            </span>
+          ) : customImgUrl ? (
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
               Diseño Personalizado Subido
@@ -569,7 +586,28 @@ const StepCard: React.FC<StepCardProps> = ({
             <span className="text-[10px] text-amber-400/80">Recomendado: 1200x750 px</span>
           </div>
 
-          <div className="relative rounded-2xl overflow-hidden border-2 border-slate-800 bg-[#040913] min-h-[200px] flex items-center justify-center p-3 group">
+          <div
+            onClick={onUploadClick}
+            onDragOver={(e) => {
+              e.preventDefault();
+              setIsDragOver(true);
+            }}
+            onDragLeave={() => setIsDragOver(false)}
+            onDrop={(e) => {
+              e.preventDefault();
+              setIsDragOver(false);
+              const dropped = e.dataTransfer.files?.[0];
+              if (dropped && onDropFile) {
+                onDropFile(dropped);
+              }
+            }}
+            className={`relative rounded-2xl overflow-hidden border-2 transition-all duration-200 cursor-pointer min-h-[210px] flex items-center justify-center p-3 group ${
+              isDragOver
+                ? 'border-amber-400 bg-amber-500/10 scale-[1.01]'
+                : 'border-slate-800 hover:border-amber-500/50 bg-[#040913]'
+            }`}
+            title="Haz clic o arrastra una imagen para actualizar este paso"
+          >
             {customImgUrl ? (
               <img
                 src={customImgUrl}
@@ -582,10 +620,34 @@ const StepCard: React.FC<StepCardProps> = ({
               </div>
             )}
 
+            {/* Hover overlay hint */}
+            <div className="absolute inset-0 bg-slate-950/60 backdrop-blur-[2px] opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2 pointer-events-none p-4 text-center">
+              <Upload className="w-8 h-8 text-amber-400 animate-bounce" />
+              <span className="text-xs font-black text-white uppercase tracking-wider">
+                {customImgUrl ? 'Clic o arrastra para cambiar' : 'Clic o arrastra para subir diseño'}
+              </span>
+              <span className="text-[10px] text-slate-300">
+                Soporta PNG, JPG, WebP
+              </span>
+            </div>
+
             {/* Overlay hover badge */}
-            <div className="absolute top-2 right-2 px-2 py-0.5 rounded-md bg-black/70 backdrop-blur-sm text-[9px] font-bold text-slate-300 border border-slate-700">
+            <div className="absolute top-2 right-2 px-2 py-0.5 rounded-md bg-black/70 backdrop-blur-sm text-[9px] font-bold text-slate-300 border border-slate-700 pointer-events-none">
               {customImgUrl ? 'Tu Diseño' : 'Vector Original'}
             </div>
+
+            {/* Uploading loading overlay */}
+            {isUploading && (
+              <div className="absolute inset-0 bg-slate-950/85 backdrop-blur-sm flex flex-col items-center justify-center gap-2 z-20">
+                <Loader2 className="w-9 h-9 text-amber-400 animate-spin" />
+                <span className="text-xs font-black text-white uppercase tracking-wider">
+                  Optimizando y Guardando...
+                </span>
+                <span className="text-[10px] text-slate-400">
+                  Sincronizando con todos los usuarios
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Action Buttons for this Image */}
@@ -593,17 +655,28 @@ const StepCard: React.FC<StepCardProps> = ({
             <button
               type="button"
               onClick={onUploadClick}
-              className="flex-1 py-2.5 px-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md active:scale-95 transition"
+              disabled={isUploading}
+              className="flex-1 py-2.5 px-3 rounded-xl bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-slate-950 font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md active:scale-95 transition"
             >
-              <Upload className="w-4 h-4" />
-              <span>{customImgUrl ? 'Cambiar Imagen' : 'Subir Mi Diseño'}</span>
+              {isUploading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Subiendo...</span>
+                </>
+              ) : (
+                <>
+                  <Upload className="w-4 h-4" />
+                  <span>{customImgUrl ? 'Cambiar Imagen' : 'Subir Mi Diseño'}</span>
+                </>
+              )}
             </button>
 
             {customImgUrl && (
               <button
                 type="button"
                 onClick={onRemoveClick}
-                className="py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-red-500/20 text-slate-400 hover:text-red-400 border border-slate-700 hover:border-red-500/40 text-xs font-bold flex items-center gap-1.5 transition"
+                disabled={isUploading}
+                className="py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-red-500/20 text-slate-400 hover:text-red-400 border border-slate-700 hover:border-red-500/40 text-xs font-bold flex items-center gap-1.5 transition disabled:opacity-50"
                 title="Restaurar ilustración vectorial original"
               >
                 <RotateCcw className="w-4 h-4" />

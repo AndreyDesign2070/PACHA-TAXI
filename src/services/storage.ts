@@ -14,6 +14,7 @@ import {
 } from '../types';
 import { collection, doc, setDoc, deleteDoc, onSnapshot } from 'firebase/firestore';
 import { db, testFirestoreConnection } from './firebase';
+import { compressDataUrl } from '../utils/imageOptimizer';
 
 const STORAGE_KEYS = {
   USERS: 'pacha_users_v1',
@@ -332,6 +333,8 @@ const INITIAL_SETTINGS: AppSettings = {
   bankHolder: 'PACHA TRANSPORTE EJECUTIVO CIA. LTDA.',
   bankIdNumber: '1391827364001',
   bankEmail: 'pagos@pachatransporte.com',
+  bankQrPichincha: '',
+  bankQrGuayaquil: '',
   welcomeNotice: 'Servicio exclusivo de transporte puerta a puerta y encomiendas en la ruta Manabí.',
   // Default Visual Assets & Texts
   appIconUrl: '',
@@ -453,21 +456,43 @@ function emitChange() {
 }
 
 // Firestore real-time synchronization helpers
+function cleanFirestoreData(data: any): any {
+  if (data === undefined) return null;
+  if (data === null) return null;
+  if (Array.isArray(data)) {
+    return data.map(cleanFirestoreData).filter((item) => item !== undefined);
+  }
+  if (typeof data === 'object') {
+    const res: Record<string, any> = {};
+    for (const key of Object.keys(data)) {
+      const val = data[key];
+      if (val !== undefined) {
+        res[key] = cleanFirestoreData(val);
+      }
+    }
+    return res;
+  }
+  return data;
+}
+
 const syncFirestoreDoc = async (coll: string, id: string, data: any) => {
   try {
-    if (!id || typeof window === 'undefined') return;
-    await setDoc(doc(db, coll, id), data, { merge: true });
+    if (!id || typeof window === 'undefined' || !db) return;
+    const sanitized = cleanFirestoreData(data);
+    await setDoc(doc(db, coll, id), sanitized, { merge: true });
+    console.info(`[PACHA Firestore] Document ${coll}/${id} synced successfully.`);
   } catch (err) {
-    // LocalStorage guarantees persistence even if offline
+    console.error(`[PACHA Firestore] Error syncing doc ${coll}/${id}:`, err);
   }
 };
 
 const deleteFirestoreDoc = async (coll: string, id: string) => {
   try {
-    if (!id || typeof window === 'undefined') return;
+    if (!id || typeof window === 'undefined' || !db) return;
     await deleteDoc(doc(db, coll, id));
+    console.info(`[PACHA Firestore] Document ${coll}/${id} deleted.`);
   } catch (err) {
-    // LocalStorage guarantees persistence even if offline
+    console.error(`[PACHA Firestore] Error deleting doc ${coll}/${id}:`, err);
   }
 };
 
@@ -545,13 +570,76 @@ export function initFirestoreRealtimeSync() {
       }
     }, () => {});
 
-    // 7. Settings listener
-    onSnapshot(doc(db, 'settings', 'global'), (snap) => {
-      if (snap.exists()) {
-        localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(snap.data()));
-        emitChange();
+    // 7. Settings listener (listens to all partitioned docs: core, visuals, guide_travel, guide_shipment, global)
+    onSnapshot(collection(db, 'settings'), (snap) => {
+      // If the snapshot has pending local writes, do not overwrite local storage with intermediate state
+      if (snap.metadata.hasPendingWrites) {
+        return;
       }
-    }, () => {});
+
+      if (!snap.empty) {
+        try {
+          const currentLocal = (() => {
+            const raw = localStorage.getItem(STORAGE_KEYS.SETTINGS);
+            return raw ? JSON.parse(raw) : {};
+          })();
+
+          let remoteCombined: Record<string, any> = {};
+          // Order so specific partition docs override generic/legacy global doc
+          const docs = [...snap.docs].sort((a, b) => {
+            if (a.id === 'global') return -1;
+            if (b.id === 'global') return 1;
+            return 0;
+          });
+
+          docs.forEach((d) => {
+            const data = d.data();
+            delete data.partitioned;
+            delete data.id;
+
+            // Never let empty values in legacy/manifest 'global' overwrite actual values from partition docs
+            for (const key of Object.keys(data)) {
+              if (d.id === 'global' && (data[key] === '' || data[key] === null || data[key] === undefined)) {
+                continue;
+              }
+              remoteCombined[key] = data[key];
+            }
+          });
+
+          // Merge: remote updates override local, but safeguard against wiping local non-empty images
+          // if remote happens to be an empty string unless remote has an explicit newer timestamp
+          const merged: Record<string, any> = { ...currentLocal };
+          for (const key of Object.keys(remoteCombined)) {
+            const remoteVal = remoteCombined[key];
+            if (remoteVal !== undefined) {
+              if (remoteVal !== '' || !currentLocal[key]) {
+                merged[key] = remoteVal;
+              } else if (remoteCombined.updatedAt && (!currentLocal.updatedAt || remoteCombined.updatedAt >= currentLocal.updatedAt)) {
+                merged[key] = remoteVal;
+              }
+            }
+          }
+
+          localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(merged));
+          emitChange();
+        } catch (e) {
+          console.warn('[PACHA] Error merging realtime settings:', e);
+        }
+      }
+    }, (err) => {
+      console.warn('[PACHA] Settings realtime listener error:', err);
+    });
+
+    // Migrate oversized local settings if present from older sessions
+    try {
+      const rawSettings = localStorage.getItem(STORAGE_KEYS.SETTINGS);
+      if (rawSettings && rawSettings.length > 500000) {
+        console.info('[PACHA] Auto-optimizing local settings to compact partitioned storage...');
+        PachaStorage.saveSettings(JSON.parse(rawSettings)).catch((e) => {
+          console.warn('[PACHA] Background settings migration note:', e);
+        });
+      }
+    } catch {}
   } catch (err) {
     console.warn('[PACHA] Firestore listener setup error:', err);
   }
@@ -747,7 +835,12 @@ export const PachaStorage = {
       travelTime: b.travelTime || b.departureTime,
       passengerCount: b.passengerCount || b.passengers,
       destinationAddress: b.destinationAddress || b.destAddress,
-      assignedDriverId: b.assignedDriverId || b.driverId
+      assignedDriverId: b.assignedDriverId || b.driverId,
+      driverId: b.driverId || b.assignedDriverId,
+      assignedDriverName: b.assignedDriverName || b.driverName,
+      driverName: b.driverName || b.assignedDriverName,
+      assignedVehiclePlate: b.assignedVehiclePlate || b.vehiclePlate,
+      vehiclePlate: b.vehiclePlate || b.assignedVehiclePlate
     }));
   },
 
@@ -889,8 +982,10 @@ export const PachaStorage = {
           driverId: dId,
           assignedDriverId: dId,
           driverName: dName,
+          assignedDriverName: dName,
           driverPhone: dPhone,
           vehiclePlate: vPlate,
+          assignedVehiclePlate: vPlate,
           vehicleModel: vModel,
           status: 'ASIGNADA' as BookingStatus,
           statusHistory: history,
@@ -901,6 +996,17 @@ export const PachaStorage = {
     });
 
     this.saveBookings(bookings);
+
+    const targetBooking = bookings.find((b) => b.id === bookingId);
+    let dIdForNotif = typeof driverOrId === 'object' ? driverOrId.id : driverOrId;
+    this.addNotification({
+      targetRole: 'DRIVER',
+      userId: dIdForNotif,
+      title: 'Nuevo Viaje Asignado',
+      message: `Te han asignado el viaje ${targetBooking?.code || bookingId} (${targetBooking?.originCityName || 'Origen'} → ${targetBooking?.destinationCityName || 'Destino'}).`,
+      type: 'BOOKING',
+      linkId: bookingId
+    });
   },
 
   addRatingToBooking(bookingId: string, rating: number, comment?: string) {
@@ -926,7 +1032,12 @@ export const PachaStorage = {
       receiverName: s.receiverName || s.recipientName,
       receiverPhone: s.receiverPhone || s.recipientPhone,
       packageDescription: s.packageDescription || s.description,
-      assignedDriverId: s.assignedDriverId || s.driverId
+      assignedDriverId: s.assignedDriverId || s.driverId,
+      driverId: s.driverId || s.assignedDriverId,
+      assignedDriverName: s.assignedDriverName || s.driverName,
+      driverName: s.driverName || s.assignedDriverName,
+      assignedVehiclePlate: s.assignedVehiclePlate || s.vehiclePlate,
+      vehiclePlate: s.vehiclePlate || s.assignedVehiclePlate
     }));
   },
 
@@ -1023,8 +1134,10 @@ export const PachaStorage = {
           driverId,
           assignedDriverId: driverId,
           driverName,
+          assignedDriverName: driverName,
           driverPhone: driverPhone || '0999999999',
           vehiclePlate: vehiclePlate || 'PACHA',
+          assignedVehiclePlate: vehiclePlate || 'PACHA',
           status: 'EN_TRANSITO' as ShipmentStatus,
           statusHistory: history,
           updatedAt: now
@@ -1053,6 +1166,15 @@ export const PachaStorage = {
       return { success: false, message: 'Encomienda no encontrada.' };
     }
 
+    // Security check: Only assigned driver can deliver (Requirement 6)
+    const assignedId = item.assignedDriverId || item.driverId;
+    if (assignedId && driverId && assignedId !== driverId && !driverId.includes('admin')) {
+      return {
+        success: false,
+        message: `Acceso restringido: Solo el conductor asignado (${item.driverName || item.assignedDriverName || 'autorizado'}) puede ingresar el código de entrega para este paquete.`
+      };
+    }
+
     const codeToMatch = (item.securityCode || item.deliveryCode).trim();
     if (codeToMatch !== enteredCode.trim()) {
       return { success: false, message: 'Código de entrega incorrecto. Solicite el código de 4 dígitos al destinatario.' };
@@ -1063,14 +1185,14 @@ export const PachaStorage = {
       if (s.id === shipmentId) {
         return {
           ...s,
-          status: 'ENTREGADA' as ShipmentStatus,
+          status: 'ENTREGADO' as ShipmentStatus,
           deliveredAt: now,
           deliveredByDriverId: driverId,
           verifiedCode: enteredCode,
           statusHistory: [
             ...s.statusHistory,
             {
-              status: 'ENTREGADA',
+              status: 'ENTREGADO' as ShipmentStatus,
               timestamp: now,
               updatedBy: `${driverName} (Conductor)`,
               notes: `Entrega verificada exitosamente con código ${enteredCode}`
@@ -1096,9 +1218,8 @@ export const PachaStorage = {
     return { success: true, message: 'Código verificado con éxito. Encomienda marcada como ENTREGADA.' };
   },
 
-  verifyAndDeliverShipment(shipmentId: string, code: string): boolean {
-    const res = this.verifyDeliveryCodeAndComplete(shipmentId, code, 'usr-driver-1', 'Roberto Zambrano');
-    return res.success;
+  verifyAndDeliverShipment(shipmentId: string, code: string, driverId?: string, driverName?: string): { success: boolean; message: string } {
+    return this.verifyDeliveryCodeAndComplete(shipmentId, code, driverId || 'usr-driver-1', driverName || 'Roberto Zambrano');
   },
 
   // --- VEHICLES ---
@@ -1272,10 +1393,165 @@ export const PachaStorage = {
     return merged;
   },
 
-  saveSettings(settings: AppSettings) {
-    localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(settings));
-    syncFirestoreDoc('settings', 'global', settings);
+  deleteBooking(id: string) {
+    const bookings = this.getBookings().filter((b) => b.id !== id);
+    try {
+      localStorage.setItem(STORAGE_KEYS.BOOKINGS, JSON.stringify(bookings));
+    } catch (e) {
+      console.warn('[PACHA] localStorage error deleting booking:', e);
+    }
+    deleteFirestoreDoc('bookings', id);
     emitChange();
+  },
+
+  deleteShipment(id: string) {
+    const shipments = this.getShipments().filter((s) => s.id !== id);
+    try {
+      localStorage.setItem(STORAGE_KEYS.SHIPMENTS, JSON.stringify(shipments));
+    } catch (e) {
+      console.warn('[PACHA] localStorage error deleting shipment:', e);
+    }
+    deleteFirestoreDoc('shipments', id);
+    emitChange();
+  },
+
+  async saveSettings(settings: AppSettings): Promise<AppSettings> {
+    // 1. Recompress any oversized base64 image strings if present
+    const processedSettings = { ...settings };
+    const imageKeys: (keyof AppSettings)[] = [
+      'appIconUrl', 'appLogoUrl', 'splashBgUrl', 'splashLogoUrl',
+      'heroBgUrl', 'defaultVehiclePhotoUrl', 'bookingBannerUrl', 'shipmentBannerUrl',
+      'bankQrPichincha', 'bankQrGuayaquil',
+      'guideTravelStep1Img', 'guideTravelStep2Img', 'guideTravelStep3Img', 'guideTravelStep4Img',
+      'guideShipmentStep1Img', 'guideShipmentStep2Img', 'guideShipmentStep3Img'
+    ];
+
+    for (const k of imageKeys) {
+      const val = processedSettings[k];
+      if (typeof val === 'string' && val.startsWith('data:image/') && val.length > 38000) {
+        try {
+          (processedSettings as any)[k] = await compressDataUrl(val, 36000);
+        } catch (e) {
+          console.warn(`[PACHA] Error compressing image field ${String(k)}:`, e);
+        }
+      }
+    }
+
+    const sanitized = cleanFirestoreData(processedSettings);
+    try {
+      localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(sanitized));
+    } catch (e) {
+      console.warn('[PACHA] localStorage error saving settings:', e);
+    }
+
+    // 2. Partition Firestore documents so no single document ever exceeds 1MB limit
+    const coreDoc = {
+      businessName: sanitized.businessName || 'PACHA',
+      fullBusinessName: sanitized.fullBusinessName || 'PACHA Transporte Ejecutivo',
+      mainRoute: sanitized.mainRoute || 'Portoviejo - Pedernales',
+      supportPhone: sanitized.supportPhone || '',
+      supportWhatsApp: sanitized.supportWhatsApp || '',
+      cancellationPolicy: sanitized.cancellationPolicy || '',
+      shipmentConditions: sanitized.shipmentConditions || '',
+      enableIntermediateRoutes: !!sanitized.enableIntermediateRoutes,
+      defaultPassengerCapacity: sanitized.defaultPassengerCapacity || 4,
+      bankAccount: sanitized.bankAccount || '',
+      bankName: sanitized.bankName || '',
+      bankHolder: sanitized.bankHolder || '',
+      bankType: sanitized.bankType || '',
+      bankIdNumber: sanitized.bankIdNumber || '',
+      bankEmail: sanitized.bankEmail || '',
+      bankQrPichincha: sanitized.bankQrPichincha || '',
+      bankQrGuayaquil: sanitized.bankQrGuayaquil || '',
+      welcomeNotice: sanitized.welcomeNotice || '',
+      updatedAt: new Date().toISOString()
+    };
+
+    const visualsDoc = {
+      appIconUrl: sanitized.appIconUrl || '',
+      appLogoUrl: sanitized.appLogoUrl || '',
+      splashBgUrl: sanitized.splashBgUrl || '',
+      splashLogoUrl: sanitized.splashLogoUrl || '',
+      splashOverlayOpacity: sanitized.splashOverlayOpacity ?? 65,
+      splashLogoSize: sanitized.splashLogoSize || 'md',
+      splashLogoStyle: sanitized.splashLogoStyle || 'framed',
+      splashShowRouteBadge: sanitized.splashShowRouteBadge ?? true,
+      heroBgUrl: sanitized.heroBgUrl || '',
+      defaultVehiclePhotoUrl: sanitized.defaultVehiclePhotoUrl || '',
+      bookingBannerUrl: sanitized.bookingBannerUrl || '',
+      shipmentBannerUrl: sanitized.shipmentBannerUrl || '',
+      appAccentTheme: sanitized.appAccentTheme || 'gold',
+      brandTitle: sanitized.brandTitle || 'PACHA',
+      brandSubtitle: sanitized.brandSubtitle || 'TRANSPORTE EJECUTIVO',
+      brandRouteOrigin: sanitized.brandRouteOrigin || 'Portoviejo',
+      brandRouteDestination: sanitized.brandRouteDestination || 'Pedernales',
+      brandBadgeText: sanitized.brandBadgeText || 'Ida y Vuelta',
+      heroSubtitle: sanitized.heroSubtitle || '',
+      splashLoadingText: sanitized.splashLoadingText || '',
+      splashSubtext: sanitized.splashSubtext || '',
+      loginTitle: sanitized.loginTitle || '',
+      loginSubtitle: sanitized.loginSubtitle || '',
+      updatedAt: new Date().toISOString()
+    };
+
+    const guideTravelDoc = {
+      guideTravelStep1Img: sanitized.guideTravelStep1Img || '',
+      guideTravelStep1Title: sanitized.guideTravelStep1Title || '',
+      guideTravelStep1Subtitle: sanitized.guideTravelStep1Subtitle || '',
+      guideTravelStep1Desc: sanitized.guideTravelStep1Desc || '',
+      guideTravelStep2Img: sanitized.guideTravelStep2Img || '',
+      guideTravelStep2Title: sanitized.guideTravelStep2Title || '',
+      guideTravelStep2Subtitle: sanitized.guideTravelStep2Subtitle || '',
+      guideTravelStep2Desc: sanitized.guideTravelStep2Desc || '',
+      guideTravelStep3Img: sanitized.guideTravelStep3Img || '',
+      guideTravelStep3Title: sanitized.guideTravelStep3Title || '',
+      guideTravelStep3Subtitle: sanitized.guideTravelStep3Subtitle || '',
+      guideTravelStep3Desc: sanitized.guideTravelStep3Desc || '',
+      guideTravelStep4Img: sanitized.guideTravelStep4Img || '',
+      guideTravelStep4Title: sanitized.guideTravelStep4Title || '',
+      guideTravelStep4Subtitle: sanitized.guideTravelStep4Subtitle || '',
+      guideTravelStep4Desc: sanitized.guideTravelStep4Desc || '',
+      updatedAt: new Date().toISOString()
+    };
+
+    const guideShipmentDoc = {
+      guideShipmentStep1Img: sanitized.guideShipmentStep1Img || '',
+      guideShipmentStep1Title: sanitized.guideShipmentStep1Title || '',
+      guideShipmentStep1Subtitle: sanitized.guideShipmentStep1Subtitle || '',
+      guideShipmentStep1Desc: sanitized.guideShipmentStep1Desc || '',
+      guideShipmentStep2Img: sanitized.guideShipmentStep2Img || '',
+      guideShipmentStep2Title: sanitized.guideShipmentStep2Title || '',
+      guideShipmentStep2Subtitle: sanitized.guideShipmentStep2Subtitle || '',
+      guideShipmentStep2Desc: sanitized.guideShipmentStep2Desc || '',
+      guideShipmentStep3Img: sanitized.guideShipmentStep3Img || '',
+      guideShipmentStep3Title: sanitized.guideShipmentStep3Title || '',
+      guideShipmentStep3Subtitle: sanitized.guideShipmentStep3Subtitle || '',
+      guideShipmentStep3Desc: sanitized.guideShipmentStep3Desc || '',
+      updatedAt: new Date().toISOString()
+    };
+
+    const globalDoc = {
+      id: 'global',
+      partitioned: true,
+      updatedAt: new Date().toISOString(),
+      businessName: sanitized.businessName || 'PACHA',
+      fullBusinessName: sanitized.fullBusinessName || 'PACHA Transporte Ejecutivo',
+      mainRoute: sanitized.mainRoute || 'Portoviejo - Pedernales',
+      supportPhone: sanitized.supportPhone || '',
+      supportWhatsApp: sanitized.supportWhatsApp || ''
+    };
+
+    // Sync all partitioned documents in parallel (each is ~10KB-80KB, well under 1MB)
+    await Promise.all([
+      syncFirestoreDoc('settings', 'global', globalDoc),
+      syncFirestoreDoc('settings', 'core', coreDoc),
+      syncFirestoreDoc('settings', 'visuals', visualsDoc),
+      syncFirestoreDoc('settings', 'guide_travel', guideTravelDoc),
+      syncFirestoreDoc('settings', 'guide_shipment', guideShipmentDoc)
+    ]);
+
+    emitChange();
+    return sanitized;
   },
 
   // --- RESET SYSTEM ---

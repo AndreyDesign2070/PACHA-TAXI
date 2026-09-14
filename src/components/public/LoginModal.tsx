@@ -11,6 +11,7 @@ interface LoginModalProps {
   onSuccess: (user: UserType) => void;
   onOpenRegister: () => void;
   onOpenRecover: () => void;
+  promptMessage?: string | null;
 }
 
 export const LoginModal: React.FC<LoginModalProps> = ({
@@ -18,7 +19,8 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   onClose,
   onSuccess,
   onOpenRegister,
-  onOpenRecover
+  onOpenRecover,
+  promptMessage
 }) => {
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
@@ -79,6 +81,14 @@ export const LoginModal: React.FC<LoginModalProps> = ({
             {settings.loginSubtitle || 'Acceso a plataforma PACHA Transporte Ejecutivo'}
           </p>
         </div>
+
+        {/* Custom prompt message (e.g. "POR FAVOR, INICIE SESION VIAJAR O ENVIAR") */}
+        {promptMessage && (
+          <div className="mb-3.5 p-3 rounded-2xl bg-amber-500/20 border-2 border-amber-400 text-amber-200 text-xs font-black tracking-wide flex items-center gap-2.5 shadow-lg">
+            <AlertCircle className="w-5 h-5 shrink-0 text-amber-400" />
+            <span className="leading-snug">{promptMessage}</span>
+          </div>
+        )}
 
         {/* Error alert */}
         {error && (
@@ -219,6 +229,13 @@ export const LoginModal: React.FC<LoginModalProps> = ({
             >
               Regístrate gratis aquí
             </button>
+          </p>
+        </div>
+
+        {/* User Required Branding (Requested: "ASI MISMO EN LA PANTALLA DE INICIAR SESION HASTA EL FINAL, DEBE APARECER ESE MISMO TEXTO APP BY: ANDREY DESIGN 2026") */}
+        <div className="mt-5 pt-3 border-t border-slate-800 text-center">
+          <p className="text-[10px] font-mono tracking-widest text-slate-500 uppercase font-bold">
+            APP BY: ANDREY DESIGN 2026
           </p>
         </div>
       </div>

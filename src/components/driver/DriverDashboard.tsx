@@ -82,12 +82,20 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({
   };
 
   // Trips assigned to this driver
-  const driverBookings = bookings.filter(
-    (b) =>
-      b.assignedDriverId === currentUser.id ||
-      b.assignedDriverId === 'usr-chofer1' ||
-      b.driverId === currentUser.id
-  );
+  const driverBookings = bookings.filter((b) => {
+    const isIdMatch = b.assignedDriverId === currentUser.id || b.driverId === currentUser.id;
+    const isUsernameMatch = Boolean(currentUser.username && (b.assignedDriverId === currentUser.username || b.driverId === currentUser.username));
+    const firstName = currentUser.fullName ? currentUser.fullName.split(' ')[0].toLowerCase() : '';
+    const isNameMatch = Boolean(
+      firstName && (
+        (b.assignedDriverName && b.assignedDriverName.toLowerCase().includes(firstName)) ||
+        (b.driverName && b.driverName.toLowerCase().includes(firstName))
+      )
+    );
+    const isFallbackChofer1 = (currentUser.username === 'chofer1' || currentUser.id === 'usr-driver-1') && 
+      (b.assignedDriverId === 'usr-chofer1' || b.assignedDriverId === 'usr-driver-1');
+    return isIdMatch || isUsernameMatch || isNameMatch || isFallbackChofer1;
+  });
 
   // Active in-progress trip (not finalized or cancelled)
   const activeBooking = driverBookings.find(
@@ -95,12 +103,20 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({
   );
 
   // Shipments assigned to driver
-  const driverShipments = shipments.filter(
-    (s) =>
-      s.assignedDriverId === currentUser.id ||
-      s.assignedDriverId === 'usr-chofer1' ||
-      s.driverId === currentUser.id
-  );
+  const driverShipments = shipments.filter((s) => {
+    const isIdMatch = s.assignedDriverId === currentUser.id || s.driverId === currentUser.id;
+    const isUsernameMatch = Boolean(currentUser.username && (s.assignedDriverId === currentUser.username || s.driverId === currentUser.username));
+    const firstName = currentUser.fullName ? currentUser.fullName.split(' ')[0].toLowerCase() : '';
+    const isNameMatch = Boolean(
+      firstName && (
+        (s.assignedDriverName && s.assignedDriverName.toLowerCase().includes(firstName)) ||
+        (s.driverName && s.driverName.toLowerCase().includes(firstName))
+      )
+    );
+    const isFallbackChofer1 = (currentUser.username === 'chofer1' || currentUser.id === 'usr-driver-1') && 
+      (s.assignedDriverId === 'usr-chofer1' || s.assignedDriverId === 'usr-driver-1');
+    return isIdMatch || isUsernameMatch || isNameMatch || isFallbackChofer1;
+  });
 
   // Assigned vehicle
   const assignedVehicle = vehicles.find((v) => v.assignedDriverId === currentUser.id) || vehicles[0];
@@ -158,20 +174,29 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({
     setDeliveryError(null);
     setDeliverySuccess(null);
 
-    if (inputCode.trim() !== shipment.securityCode) {
+    const enteredCode = inputCode.trim();
+    if (enteredCode !== shipment.securityCode) {
       setDeliveryError('El código de 4 dígitos ingresado es incorrecto. Solicite el código correcto al destinatario.');
       return;
     }
 
-    const ok = PachaStorage.verifyAndDeliverShipment(shipment.id, inputCode.trim());
-    if (ok) {
+    const res = PachaStorage.verifyAndDeliverShipment(
+      shipment.id,
+      enteredCode,
+      currentUser.id,
+      currentUser.fullName
+    );
+
+    if (res && res.success) {
       setDeliverySuccess('¡Entrega confirmada y registrada con éxito en PACHA!');
       refreshData();
       setTimeout(() => {
         setDeliveryShipmentId(null);
         setInputCode('');
         setDeliverySuccess(null);
-      }, 1500);
+      }, 800);
+    } else {
+      setDeliveryError(res?.message || 'Error al validar el código de entrega.');
     }
   };
 
@@ -507,10 +532,14 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({
                 </div>
 
                 {s.status === 'ENTREGADO' ? (
-                  <div className="p-2.5 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs font-bold flex items-center justify-center gap-2">
-                    <CheckCircle className="w-4 h-4" />
-                    <span>ENCOMIENDA ENTREGADA CON ÉXITO</span>
-                  </div>
+                  <button
+                    disabled
+                    id={`btn-delivered-shipment-${s.id}`}
+                    className="w-full py-3 rounded-xl bg-gradient-to-r from-amber-300 via-amber-400 to-amber-500 text-black font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg border-2 border-amber-300 cursor-default"
+                  >
+                    <CheckCircle className="w-4 h-4 text-black shrink-0" />
+                    <span>ENCOMIENDA YA ENTREGADA</span>
+                  </button>
                 ) : (
                   <div>
                     {deliveryShipmentId === s.id ? (

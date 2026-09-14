@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Image as ImageIcon,
   Upload,
@@ -30,6 +30,7 @@ import { PachaIcon } from '../common/PachaIcon';
 import { PachaWordmark } from '../common/PachaWordmark';
 import { PachaLogo } from '../common/PachaLogo';
 import { GuideStepsEditor } from './GuideStepsEditor';
+import { optimizeImageFile } from '../../utils/imageOptimizer';
 
 interface AppVisualEditorProps {
   onNotify?: (msg: string) => void;
@@ -41,6 +42,14 @@ export const AppVisualEditor: React.FC<AppVisualEditorProps> = ({ onNotify }) =>
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
+  // Sync settings when modified elsewhere
+  useEffect(() => {
+    const unsub = PachaStorage.subscribe(() => {
+      setSettings(PachaStorage.getSettings());
+    });
+    return unsub;
+  }, []);
+
   // Hidden file input refs for each visual asset
   const iconInputRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
@@ -50,62 +59,6 @@ export const AppVisualEditor: React.FC<AppVisualEditorProps> = ({ onNotify }) =>
   const bookingBannerInputRef = useRef<HTMLInputElement>(null);
   const shipmentBannerInputRef = useRef<HTMLInputElement>(null);
   const vehicleInputRef = useRef<HTMLInputElement>(null);
-
-  // Optimize and convert uploaded file into high-quality base64 data URL
-  const processImageFile = (
-    file: File,
-    maxWidth: number,
-    maxHeight: number,
-    quality = 0.88
-  ): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      // If it's an SVG, read directly as data URL to preserve crisp vector paths
-      if (file.type === 'image/svg+xml') {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = (err) => reject(err);
-        reader.readAsDataURL(file);
-        return;
-      }
-
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const img = new Image();
-        img.onload = () => {
-          let width = img.width;
-          let height = img.height;
-
-          // Scale down proportionally if larger than maximum limits
-          if (width > maxWidth || height > maxHeight) {
-            if (width / maxWidth > height / maxHeight) {
-              height = Math.round((height * maxWidth) / width);
-              width = maxWidth;
-            } else {
-              width = Math.round((width * maxHeight) / height);
-              height = maxHeight;
-            }
-          }
-
-          const canvas = document.createElement('canvas');
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          if (!ctx) {
-            resolve(reader.result as string);
-            return;
-          }
-
-          ctx.drawImage(img, 0, 0, width, height);
-          const dataUrl = canvas.toDataURL(file.type === 'image/png' ? 'image/png' : 'image/jpeg', quality);
-          resolve(dataUrl);
-        };
-        img.onerror = () => reject(new Error('No se pudo decodificar la imagen'));
-        img.src = e.target?.result as string;
-      };
-      reader.onerror = (err) => reject(err);
-      reader.readAsDataURL(file);
-    });
-  };
 
   const handleFileUpload = async (
     e: React.ChangeEvent<HTMLInputElement>,
@@ -122,28 +75,29 @@ export const AppVisualEditor: React.FC<AppVisualEditorProps> = ({ onNotify }) =>
 
     setIsProcessing(true);
     try {
-      const dataUrl = await processImageFile(file, maxWidth, maxHeight);
+      const dataUrl = await optimizeImageFile(file, maxWidth, maxHeight, 0.85);
       const updated = { ...settings, [field]: dataUrl };
       setSettings(updated);
-      PachaStorage.saveSettings(updated);
+      await PachaStorage.saveSettings(updated);
 
       const msg = `¡${assetName} actualizado y guardado con éxito!`;
       if (onNotify) onNotify(msg);
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error procesando imagen:', err);
-      alert('Hubo un error al procesar el archivo. Por favor intente con otra imagen JPG o PNG.');
+      const errMsg = err?.message || 'Error al procesar el archivo.';
+      alert(`No se pudo procesar la imagen (${errMsg}). Por favor intente con otra imagen JPG o PNG.`);
     } finally {
       setIsProcessing(false);
     }
   };
 
-  const handleRemoveAsset = (field: keyof AppSettings, assetName: string) => {
+  const handleRemoveAsset = async (field: keyof AppSettings, assetName: string) => {
     if (window.confirm(`¿Desea eliminar la imagen personalizada de "${assetName}" y volver a la opción predeterminada?`)) {
       const updated = { ...settings, [field]: '' };
       setSettings(updated);
-      PachaStorage.saveSettings(updated);
+      await PachaStorage.saveSettings(updated);
 
       const msg = `Se eliminó la imagen personalizada de "${assetName}". Ahora se usa el elemento predeterminado.`;
       if (onNotify) onNotify(msg);
@@ -155,20 +109,27 @@ export const AppVisualEditor: React.FC<AppVisualEditorProps> = ({ onNotify }) =>
     setSettings(updated);
   };
 
-  const handleSaveAll = () => {
-    PachaStorage.saveSettings(settings);
-    setSaveSuccess(true);
-    if (onNotify) onNotify('¡Todos los cambios visuales y textos han sido guardados y sincronizados!');
-    setTimeout(() => setSaveSuccess(false), 3500);
+  const handleSaveAll = async () => {
+    setIsProcessing(true);
+    try {
+      await PachaStorage.saveSettings(settings);
+      setSaveSuccess(true);
+      if (onNotify) onNotify('¡Todos los cambios visuales y textos han sido guardados y sincronizados!');
+      setTimeout(() => setSaveSuccess(false), 3500);
+    } catch (err) {
+      console.error('Error guardando configuración:', err);
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
-  const handleTestSplashLive = () => {
-    PachaStorage.saveSettings(settings);
+  const handleTestSplashLive = async () => {
+    await PachaStorage.saveSettings(settings);
     window.dispatchEvent(new CustomEvent('pacha_trigger_splash'));
     if (onNotify) onNotify('⚡ Probando Pantalla de Carga (Splash Screen) en tiempo real...');
   };
 
-  const handleResetToDefaults = () => {
+  const handleResetToDefaults = async () => {
     if (window.confirm('¿Está seguro de restaurar todas las imágenes, íconos y textos a sus valores originales de fábrica?')) {
       const resetSettings: AppSettings = {
         ...settings,
@@ -204,7 +165,7 @@ export const AppVisualEditor: React.FC<AppVisualEditorProps> = ({ onNotify }) =>
         guideShipmentStep3Img: ''
       };
       setSettings(resetSettings);
-      PachaStorage.saveSettings(resetSettings);
+      await PachaStorage.saveSettings(resetSettings);
       if (onNotify) onNotify('Valores visuales restaurados a los predeterminados de fábrica.');
     }
   };
@@ -217,14 +178,14 @@ export const AppVisualEditor: React.FC<AppVisualEditorProps> = ({ onNotify }) =>
         type="file"
         accept="image/png,image/jpeg,image/webp,image/svg+xml"
         className="hidden"
-        onChange={(e) => handleFileUpload(e, 'appIconUrl', 600, 600, 'Ícono de la App')}
+        onChange={(e) => handleFileUpload(e, 'appIconUrl', 320, 320, 'Ícono de la App')}
       />
       <input
         ref={logoInputRef}
         type="file"
         accept="image/png,image/jpeg,image/webp,image/svg+xml"
         className="hidden"
-        onChange={(e) => handleFileUpload(e, 'appLogoUrl', 1200, 400, 'Logotipo PACHA')}
+        onChange={(e) => handleFileUpload(e, 'appLogoUrl', 600, 200, 'Logotipo PACHA')}
       />
       {/* Splash Screen Background Photo */}
       <input
@@ -232,7 +193,7 @@ export const AppVisualEditor: React.FC<AppVisualEditorProps> = ({ onNotify }) =>
         type="file"
         accept="image/png,image/jpeg,image/webp"
         className="hidden"
-        onChange={(e) => handleFileUpload(e, 'splashBgUrl', 1600, 1200, 'Fondo de Pantalla de Carga')}
+        onChange={(e) => handleFileUpload(e, 'splashBgUrl', 800, 540, 'Fondo de Pantalla de Carga')}
       />
       {/* Splash Screen Custom Logo/Badge */}
       <input
@@ -240,7 +201,7 @@ export const AppVisualEditor: React.FC<AppVisualEditorProps> = ({ onNotify }) =>
         type="file"
         accept="image/png,image/jpeg,image/webp,image/svg+xml"
         className="hidden"
-        onChange={(e) => handleFileUpload(e, 'splashLogoUrl', 1200, 800, 'Logotipo del Splash Screen')}
+        onChange={(e) => handleFileUpload(e, 'splashLogoUrl', 600, 400, 'Logotipo del Splash Screen')}
       />
       {/* Hero Banner */}
       <input
@@ -248,7 +209,7 @@ export const AppVisualEditor: React.FC<AppVisualEditorProps> = ({ onNotify }) =>
         type="file"
         accept="image/png,image/jpeg,image/webp"
         className="hidden"
-        onChange={(e) => handleFileUpload(e, 'heroBgUrl', 1600, 900, 'Banner de Portada')}
+        onChange={(e) => handleFileUpload(e, 'heroBgUrl', 850, 480, 'Banner de Portada')}
       />
       {/* Booking Form Banner */}
       <input
@@ -256,7 +217,7 @@ export const AppVisualEditor: React.FC<AppVisualEditorProps> = ({ onNotify }) =>
         type="file"
         accept="image/png,image/jpeg,image/webp"
         className="hidden"
-        onChange={(e) => handleFileUpload(e, 'bookingBannerUrl', 1400, 600, 'Banner de Reservas')}
+        onChange={(e) => handleFileUpload(e, 'bookingBannerUrl', 800, 400, 'Banner de Reservas')}
       />
       {/* Shipment Form Banner */}
       <input
@@ -264,7 +225,7 @@ export const AppVisualEditor: React.FC<AppVisualEditorProps> = ({ onNotify }) =>
         type="file"
         accept="image/png,image/jpeg,image/webp"
         className="hidden"
-        onChange={(e) => handleFileUpload(e, 'shipmentBannerUrl', 1400, 600, 'Banner de Encomiendas')}
+        onChange={(e) => handleFileUpload(e, 'shipmentBannerUrl', 800, 400, 'Banner de Encomiendas')}
       />
       {/* Vehicle Fleet Official Photo */}
       <input
@@ -272,7 +233,7 @@ export const AppVisualEditor: React.FC<AppVisualEditorProps> = ({ onNotify }) =>
         type="file"
         accept="image/png,image/jpeg,image/webp"
         className="hidden"
-        onChange={(e) => handleFileUpload(e, 'defaultVehiclePhotoUrl', 1000, 750, 'Foto de Vehículo')}
+        onChange={(e) => handleFileUpload(e, 'defaultVehiclePhotoUrl', 700, 500, 'Foto de Vehículo')}
       />
 
       {/* Header Banner */}

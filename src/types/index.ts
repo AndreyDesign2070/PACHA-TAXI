@@ -109,6 +109,7 @@ export interface Booking {
   driverId?: string;
   assignedDriverId?: string;
   driverName?: string;
+  assignedDriverName?: string;
   driverPhone?: string;
   driverPhoto?: string;
   vehicleId?: string;
@@ -116,6 +117,7 @@ export interface Booking {
   vehicleModel?: string;
   vehicleColor?: string;
   vehiclePlate?: string;
+  assignedVehiclePlate?: string;
   paymentMethod: PaymentMethod;
   paymentStatus: PaymentStatus;
   statusHistory: StatusHistoryEntry[];
@@ -164,8 +166,10 @@ export interface Shipment {
   driverId?: string;
   assignedDriverId?: string;
   driverName?: string;
+  assignedDriverName?: string;
   driverPhone?: string;
   vehiclePlate?: string;
+  assignedVehiclePlate?: string;
   paymentMethod: PaymentMethod;
   paymentStatus: PaymentStatus;
   statusHistory: StatusHistoryEntry[];
@@ -219,6 +223,8 @@ export interface AppSettings {
   bankType?: string;
   bankIdNumber?: string;
   bankEmail?: string;
+  bankQrPichincha?: string; // QR code for Banco Pichincha / DeUna
+  bankQrGuayaquil?: string; // QR code for Banco Guayaquil
   welcomeNotice?: string;
   // --- Visual Customization (Fotos, Íconos y Textos del Super Admin) ---
   appIconUrl?: string; // Custom App Icon (Isotipo)

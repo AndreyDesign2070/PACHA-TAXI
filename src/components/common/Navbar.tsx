@@ -63,9 +63,9 @@ export const Navbar: React.FC<NavbarProps> = ({
 
       {/* SEGUNDA LÍNEA: Botón "Crear Icono", "Notificaciones" y la flechita de roles */}
       <div className="max-w-7xl mx-auto px-3 sm:px-6 py-1.5 flex items-center justify-between gap-2">
-        {/* Left of Second Line: GUIA DE USO (if client) + CREAR ICONO */}
+        {/* Left of Second Line: GUIA DE USO (for all roles) + CREAR ICONO */}
         <div className="flex items-center gap-2">
-          {currentUser && currentUser.role === 'CLIENT' && onOpenGuide && (
+          {onOpenGuide && (
             <button
               id="btn-nav-guia-uso"
               onClick={onOpenGuide}

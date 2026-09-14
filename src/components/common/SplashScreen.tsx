@@ -19,21 +19,21 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
     });
   }, []);
 
-  // Phase 1: 3 seconds showing ONLY the application icon on navy gradient
+  // Phase 1: Exactly 4 seconds showing the second framed icon with typography
   useEffect(() => {
     const iconTimer = setTimeout(() => {
       setStage('LOADING');
-    }, 3000);
+    }, 4000);
 
     return () => clearTimeout(iconTimer);
   }, []);
 
-  // Phase 2: 3 seconds loading bar with executive taxi image background
+  // Phase 2: Exactly 6 seconds loading bar to reach 100% with executive taxi background
   useEffect(() => {
     if (stage !== 'LOADING') return;
 
-    const duration = 3000; // Exactly 3 seconds
-    const intervalTime = 30; // 30ms intervals
+    const duration = 6000; // Exactly 6 seconds as requested
+    const intervalTime = 30; // 30ms intervals for smooth animation
     const step = 100 / (duration / intervalTime);
 
     const loadTimer = setInterval(() => {
@@ -41,7 +41,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
         const next = prev + step;
         if (next >= 100) {
           clearInterval(loadTimer);
-          setTimeout(onComplete, 180);
+          setTimeout(onComplete, 250);
           return 100;
         }
         return next;
@@ -85,23 +85,21 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
       id="pacha-splash-screen"
       className="fixed inset-0 z-50 flex flex-col items-center justify-between text-white select-none transition-all duration-700 overflow-hidden"
     >
-      {/* ================= STAGE 1: ONLY THE APP ICON ON NAVY GRADIENT ================= */}
+      {/* ================= STAGE 1: SECOND FRAMED ICON (4 SECONDS) ================= */}
       {stage === 'ICON' && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-b from-[#0B254E] via-[#061533] to-[#020A1A] animate-in fade-in duration-500">
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-b from-[#0B254E] via-[#061533] to-[#020A1A] animate-in fade-in duration-500 p-6">
           {/* Subtle ambient light aura */}
-          <div className="absolute w-96 h-96 rounded-full bg-blue-600/25 blur-3xl pointer-events-none animate-pulse" />
+          <div className="absolute w-96 h-96 rounded-full bg-amber-500/15 blur-3xl pointer-events-none animate-pulse" />
 
-          {/* Centered Application Icon / Splash Logo */}
-          <div className="relative z-10 flex flex-col items-center justify-center transition-transform duration-1000">
-            {splashLogo ? (
-              <img
-                src={splashLogo}
-                alt={brandTitle}
-                className="max-h-28 max-w-[220px] object-contain drop-shadow-[0_20px_40px_rgba(0,0,0,0.9)]"
-              />
-            ) : (
-              <PachaIcon size={105} className="drop-shadow-[0_20px_40px_rgba(0,0,0,0.9)]" />
-            )}
+          {/* Centered Second Icon (Framed with Gold Aura) */}
+          <div className="relative z-10 flex flex-col items-center justify-center text-center animate-in zoom-in-95 duration-700">
+            {/* Framed Icon */}
+            <div className="relative">
+              <div className="absolute -inset-2 bg-amber-500/30 rounded-3xl blur-md opacity-90" />
+              <div className="relative z-10 p-3.5 sm:p-4 rounded-3xl bg-black/75 backdrop-blur-xl border-2 border-amber-500/50 shadow-[0_14px_45px_rgba(0,0,0,0.9)] flex items-center justify-center">
+                <PachaIcon size={72} className="drop-shadow-2xl" />
+              </div>
+            </div>
           </div>
 
           {/* Skip button top right */}

@@ -35,6 +35,7 @@ export default function App() {
 
   // Modals state
   const [isLoginOpen, setIsLoginOpen] = useState(false);
+  const [loginPromptMessage, setLoginPromptMessage] = useState<string | null>(null);
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
   const [isRecoverOpen, setIsRecoverOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
@@ -126,6 +127,19 @@ export default function App() {
   // Determine user role for navigation
   const effectiveRole: UserRole | 'PUBLIC' = currentUser ? currentUser.role : 'PUBLIC';
 
+  // Constant required message when unauthenticated client attempts booking or shipment
+  const LOGIN_REQUIRED_MSG = 'POR FAVOR, INICIE SESION PARA PODER VIAJAR O ENVIAR UNA ENCOMIENDA';
+
+  // Handle Tab Selection with mandatory login check for booking and shipment
+  const handleSelectTab = (tab: string) => {
+    if ((tab === 'book' || tab === 'shipment') && !currentUser) {
+      setLoginPromptMessage(LOGIN_REQUIRED_MSG);
+      setIsLoginOpen(true);
+      return;
+    }
+    setCurrentTab(tab);
+  };
+
   return (
     <div className="min-h-screen bg-[#071322] text-white flex flex-col antialiased selection:bg-amber-500 selection:text-slate-950 font-sans overflow-x-hidden w-full max-w-full">
       {/* 3-second animated Splash Screen */}
@@ -143,7 +157,10 @@ export default function App() {
         currentUser={currentUser}
         unreadCount={unreadCount}
         onOpenNotifications={() => setIsNotificationsOpen(true)}
-        onOpenLogin={() => setIsLoginOpen(true)}
+        onOpenLogin={() => {
+          setLoginPromptMessage(null);
+          setIsLoginOpen(true);
+        }}
         onLogout={handleLogout}
         onSelectRoleDemo={handleSelectRoleDemo}
         onOpenGuide={() => setIsGuideOpen(true)}
@@ -154,7 +171,7 @@ export default function App() {
         {/* Desktop Side Navigation */}
         <DesktopNav
           currentTab={currentTab}
-          onSelectTab={setCurrentTab}
+          onSelectTab={handleSelectTab}
           role={effectiveRole}
           onOpenGuide={() => setIsGuideOpen(true)}
         />
@@ -164,9 +181,26 @@ export default function App() {
           {/* 1. PUBLIC & CLIENT VIEWS */}
           {currentTab === 'home' && (
             <LandingPage
-              onStartBooking={() => setCurrentTab('book')}
-              onStartShipment={() => setCurrentTab('shipment')}
-              onOpenLogin={() => setIsLoginOpen(true)}
+              onStartBooking={() => {
+                if (!currentUser) {
+                  setLoginPromptMessage(LOGIN_REQUIRED_MSG);
+                  setIsLoginOpen(true);
+                } else {
+                  setCurrentTab('book');
+                }
+              }}
+              onStartShipment={() => {
+                if (!currentUser) {
+                  setLoginPromptMessage(LOGIN_REQUIRED_MSG);
+                  setIsLoginOpen(true);
+                } else {
+                  setCurrentTab('shipment');
+                }
+              }}
+              onOpenLogin={() => {
+                setLoginPromptMessage(null);
+                setIsLoginOpen(true);
+              }}
               onOpenGuide={() => setIsGuideOpen(true)}
             />
           )}
@@ -174,7 +208,10 @@ export default function App() {
           {currentTab === 'book' && (
             <BookingFlow
               currentUser={currentUser}
-              onOpenLogin={() => setIsLoginOpen(true)}
+              onOpenLogin={() => {
+                setLoginPromptMessage(LOGIN_REQUIRED_MSG);
+                setIsLoginOpen(true);
+              }}
               onBookingComplete={(b) => {
                 setNotifications(PachaStorage.getNotifications());
               }}
@@ -184,7 +221,10 @@ export default function App() {
           {currentTab === 'shipment' && (
             <ShipmentFlow
               currentUser={currentUser}
-              onOpenLogin={() => setIsLoginOpen(true)}
+              onOpenLogin={() => {
+                setLoginPromptMessage(LOGIN_REQUIRED_MSG);
+                setIsLoginOpen(true);
+              }}
               onShipmentComplete={(s) => {
                 setNotifications(PachaStorage.getNotifications());
               }}
@@ -194,16 +234,22 @@ export default function App() {
           {currentTab === 'my-trips' && (
             <ClientTripsView
               currentUser={currentUser}
-              onOpenLogin={() => setIsLoginOpen(true)}
-              onBookNew={() => setCurrentTab('book')}
-              onShipNew={() => setCurrentTab('shipment')}
+              onOpenLogin={() => {
+                setLoginPromptMessage(null);
+                setIsLoginOpen(true);
+              }}
+              onBookNew={() => handleSelectTab('book')}
+              onShipNew={() => handleSelectTab('shipment')}
             />
           )}
 
           {currentTab === 'profile' && (
             <UserProfileView
               currentUser={currentUser}
-              onOpenLogin={() => setIsLoginOpen(true)}
+              onOpenLogin={() => {
+                setLoginPromptMessage(null);
+                setIsLoginOpen(true);
+              }}
               onLogout={handleLogout}
             />
           )}
@@ -234,23 +280,39 @@ export default function App() {
               onSelectTab={setCurrentTab}
             />
           )}
+
+          {/* Andrey Design Branding (User requirement: "EN TODAS LAS PANTALLAS DE LA APP, DESPUES DE HABER INICIADO SESION, HASTA EL FINAL DE LA PANTALLA, DEBE APARECER UN TEXTO QUE DIGA “APP BY: ANDREY DESIGN 2026”") */}
+          {currentUser && (
+            <footer className="mt-auto pt-10 pb-8 text-center border-t border-slate-900/60">
+              <p className="text-[11px] font-mono tracking-widest text-slate-500 font-semibold uppercase">
+                APP BY: ANDREY DESIGN 2026
+              </p>
+            </footer>
+          )}
         </main>
       </div>
 
       {/* Mobile-first Bottom Navigation Dock */}
       <BottomNav
         currentTab={currentTab}
-        onSelectTab={setCurrentTab}
+        onSelectTab={handleSelectTab}
         role={effectiveRole}
       />
 
       {/* Modals & Drawers */}
       <LoginModal
         isOpen={isLoginOpen}
-        onClose={() => setIsLoginOpen(false)}
-        onSuccess={handleLoginSuccess}
+        onClose={() => {
+          setIsLoginOpen(false);
+          setLoginPromptMessage(null);
+        }}
+        onSuccess={(user) => {
+          setLoginPromptMessage(null);
+          handleLoginSuccess(user);
+        }}
         onOpenRegister={() => setIsRegisterOpen(true)}
         onOpenRecover={() => setIsRecoverOpen(true)}
+        promptMessage={loginPromptMessage}
       />
 
       <RegisterModal

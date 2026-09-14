@@ -105,8 +105,8 @@ export const DesktopNav: React.FC<DesktopNavProps> = ({ currentTab, onSelectTab,
         })}
       </nav>
 
-      {/* Guia de uso button for clients or public */}
-      {(role === 'CLIENT' || role === 'PUBLIC') && onOpenGuide && (
+      {/* Guia de uso button for all roles */}
+      {onOpenGuide && (
         <div className="mt-4 pt-3 border-t border-slate-800">
           <button
             id="desktop-nav-guia-uso"

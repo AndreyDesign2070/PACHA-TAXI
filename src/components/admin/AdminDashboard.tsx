@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   LayoutDashboard,
   Calendar,
@@ -25,12 +25,20 @@ import {
   Save,
   MessageSquare,
   Shield,
-  Navigation
+  Navigation,
+  Trash2,
+  QrCode,
+  Upload,
+  Phone,
+  Filter,
+  UserX,
+  UserCheck
 } from 'lucide-react';
 import { User, Booking, Shipment, City, RouteFare, Vehicle, BookingStatus, AppSettings } from '../../types';
 import { PachaStorage } from '../../services/storage';
 import { PachaAuth } from '../../services/auth';
 import { GpsLocationModal } from '../common/GpsLocationModal';
+import { optimizeImageFile } from '../../utils/imageOptimizer';
 
 interface AdminDashboardProps {
   currentUser: User;
@@ -80,6 +88,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   // Filter & Search
   const [clientSearchQuery, setClientSearchQuery] = useState('');
+  const [clientStatusFilter, setClientStatusFilter] = useState<'ALL' | 'ACTIVE' | 'SUSPENDED'>('ALL');
   const [bookingFilterStatus, setBookingFilterStatus] = useState<string>('ALL');
 
   // New city form
@@ -107,6 +116,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     type: 'ORIGIN' | 'DESTINATION' | 'SHIPMENT';
     title?: string;
   } | null>(null);
+
+  // QR Code file input refs for official banks
+  const pichinchaQrInputRef = useRef<HTMLInputElement>(null);
+  const guayaquilQrInputRef = useRef<HTMLInputElement>(null);
 
   const refreshData = () => {
     setBookings(PachaStorage.getBookings());
@@ -275,6 +288,88 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     showNotification('Tarifa actualizada correctamente.');
   };
 
+  // Handle Delete Finished Booking (Requested: "COMO ADMIN, DEBE APARECER UN BOTON DE PODER ELIMINAR EL VIAJE UNICAMENTE CUANDO EL ESTADO DEL VIAJE ES FINALIZADO")
+  const handleDeleteBooking = (bookingId: string, bookingRef: string) => {
+    if (window.confirm(`¿Está seguro de que desea eliminar permanentemente este viaje finalizado (${bookingRef})? Esta acción no se puede deshacer.`)) {
+      PachaStorage.deleteBooking(bookingId);
+      refreshData();
+      showNotification('¡Viaje finalizado eliminado exitosamente!');
+    }
+  };
+
+  // Handle Delete Delivered Shipment (Requested: "EN LAS ENCOMIENDAS PODER ELIMINARLA UNICAMENTE CUANDO EL ESTADO ES ENTREGADA")
+  const handleDeleteShipment = (shipmentId: string, desc: string) => {
+    if (window.confirm(`¿Está seguro de que desea eliminar permanentemente esta encomienda entregada "${desc}" (${shipmentId})? Esta acción no se puede deshacer.`)) {
+      PachaStorage.deleteShipment(shipmentId);
+      refreshData();
+      showNotification('¡Encomienda entregada eliminada exitosamente!');
+    }
+  };
+
+  // Handle Toggle Suspend Customer (User requirement: "COMO ADMIN DEBO PODER SUSPENDER Y ELIMINAR CLIENTES")
+  const handleToggleSuspendCustomer = (customer: User) => {
+    const isCurrentlyActive = customer.status === 'active';
+    const confirmPrompt = isCurrentlyActive
+      ? `¿Está seguro de que desea SUSPENDER la cuenta del cliente "${customer.fullName}" (Cédula: ${customer.cedula || customer.username})?\n\nEl usuario no podrá solicitar viajes ni enviar encomiendas mientras esté suspendido.`
+      : `¿Desea REACTIVAR la cuenta del cliente "${customer.fullName}" (Cédula: ${customer.cedula || customer.username})?\n\nEl usuario podrá volver a solicitar servicios y acceder a la plataforma.`;
+
+    if (window.confirm(confirmPrompt)) {
+      const nextStatus = isCurrentlyActive ? 'suspended' : 'active';
+      PachaStorage.updateUserStatus(customer.id, nextStatus);
+      refreshData();
+      showNotification(
+        isCurrentlyActive
+          ? `Cliente "${customer.fullName}" ha sido SUSPENDIDO.`
+          : `Cliente "${customer.fullName}" ha sido REACTIVADO exitosamente.`
+      );
+    }
+  };
+
+  // Handle Delete Customer (User requirement: "COMO ADMIN DEBO PODER SUSPENDER Y ELIMINAR CLIENTES")
+  const handleDeleteCustomer = (customer: User) => {
+    if (
+      window.confirm(
+        `¿Está seguro de que desea ELIMINAR PERMANENTEMENTE al cliente "${customer.fullName}" (Cédula: ${customer.cedula || customer.username})?\n\nEsta acción borrará definitivamente su cuenta del sistema y no se puede deshacer.`
+      )
+    ) {
+      PachaStorage.deleteUser(customer.id);
+      refreshData();
+      showNotification(`Cliente "${customer.fullName}" eliminado permanentemente.`);
+    }
+  };
+
+  // Handle Bank QR Uploads (Requested: "AGREGA UN CUADRO PARA SUBIR UNA IMAGEN DEL QR DEL BANCO, DAME DOS OPCIONES PICHINCHA Y GUAYAQUIL")
+  const handleUploadBankQr = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+    bankType: 'pichincha' | 'guayaquil'
+  ) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+
+    try {
+      const dataUrl = await optimizeImageFile(file, 700, 700, 0.85);
+      const field = bankType === 'pichincha' ? 'bankQrPichincha' : 'bankQrGuayaquil';
+      const updated = { ...appSettingsForm, [field]: dataUrl };
+      setAppSettingsForm(updated);
+      PachaStorage.saveSettings(updated);
+      showNotification(`¡Código QR de ${bankType === 'pichincha' ? 'Banco Pichincha (DeUna)' : 'Banco Guayaquil'} subido y guardado con éxito!`);
+    } catch (err) {
+      console.error('Error subiendo QR:', err);
+      alert('Error al procesar la imagen del QR. Por favor use una imagen JPG, PNG o WebP.');
+    }
+  };
+
+  const handleRemoveBankQr = (bankType: 'pichincha' | 'guayaquil') => {
+    if (window.confirm(`¿Desea eliminar el código QR de ${bankType === 'pichincha' ? 'Banco Pichincha (DeUna)' : 'Banco Guayaquil'}?`)) {
+      const field = bankType === 'pichincha' ? 'bankQrPichincha' : 'bankQrGuayaquil';
+      const updated = { ...appSettingsForm, [field]: '' };
+      setAppSettingsForm(updated);
+      PachaStorage.saveSettings(updated);
+      showNotification(`Código QR de ${bankType === 'pichincha' ? 'Banco Pichincha' : 'Banco Guayaquil'} eliminado.`);
+    }
+  };
+
   return (
     <div className="w-full max-w-7xl mx-auto p-3 sm:p-6 text-white pb-28 space-y-6">
       {/* Admin Title Header */}
@@ -313,6 +408,118 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         </div>
       </div>
 
+      {/* Admin Quick Module Navigation Bar */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar border-b border-slate-800/80">
+        <button
+          onClick={() => handleSwitchTab('admin-dashboard')}
+          className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
+            activeTab === 'OVERVIEW'
+              ? 'bg-amber-500 text-slate-950 shadow-md'
+              : 'bg-slate-900/90 text-slate-400 hover:text-white hover:bg-slate-800'
+          }`}
+        >
+          <LayoutDashboard className="w-3.5 h-3.5" />
+          <span>Dashboard</span>
+        </button>
+
+        <button
+          onClick={() => handleSwitchTab('admin-bookings')}
+          className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
+            activeTab === 'BOOKINGS'
+              ? 'bg-amber-500 text-slate-950 shadow-md'
+              : 'bg-slate-900/90 text-slate-400 hover:text-white hover:bg-slate-800'
+          }`}
+        >
+          <Calendar className="w-3.5 h-3.5" />
+          <span>Viajes</span>
+          <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-black/40 font-mono">
+            {bookings.length}
+          </span>
+        </button>
+
+        <button
+          onClick={() => handleSwitchTab('admin-shipments')}
+          className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
+            activeTab === 'SHIPMENTS'
+              ? 'bg-amber-500 text-slate-950 shadow-md'
+              : 'bg-slate-900/90 text-slate-400 hover:text-white hover:bg-slate-800'
+          }`}
+        >
+          <Package className="w-3.5 h-3.5" />
+          <span>Encomiendas</span>
+          <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-black/40 font-mono">
+            {shipments.length}
+          </span>
+        </button>
+
+        <button
+          onClick={() => handleSwitchTab('admin-drivers')}
+          className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
+            activeTab === 'DRIVERS'
+              ? 'bg-amber-500 text-slate-950 shadow-md'
+              : 'bg-slate-900/90 text-slate-400 hover:text-white hover:bg-slate-800'
+          }`}
+        >
+          <Car className="w-3.5 h-3.5" />
+          <span>Conductores</span>
+          <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-black/40 font-mono">
+            {users.filter((u) => u.role === 'DRIVER').length}
+          </span>
+        </button>
+
+        <button
+          id="btn-nav-admin-customers"
+          onClick={() => handleSwitchTab('admin-customers')}
+          className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
+            activeTab === 'CUSTOMERS'
+              ? 'bg-amber-500 text-slate-950 shadow-md'
+              : 'bg-slate-900/90 text-slate-400 hover:text-white hover:bg-slate-800'
+          }`}
+        >
+          <Users className="w-3.5 h-3.5" />
+          <span>Clientes</span>
+          <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-black/40 font-mono text-purple-300">
+            {users.filter((u) => u.role === 'CUSTOMER').length}
+          </span>
+        </button>
+
+        <button
+          onClick={() => handleSwitchTab('admin-routes')}
+          className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
+            activeTab === 'ROUTES'
+              ? 'bg-amber-500 text-slate-950 shadow-md'
+              : 'bg-slate-900/90 text-slate-400 hover:text-white hover:bg-slate-800'
+          }`}
+        >
+          <MapPin className="w-3.5 h-3.5" />
+          <span>Tarifas</span>
+        </button>
+
+        <button
+          onClick={() => handleSwitchTab('admin-payments')}
+          className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
+            activeTab === 'PAYMENTS'
+              ? 'bg-amber-500 text-slate-950 shadow-md'
+              : 'bg-slate-900/90 text-slate-400 hover:text-white hover:bg-slate-800'
+          }`}
+        >
+          <CreditCard className="w-3.5 h-3.5" />
+          <span>Pagos</span>
+        </button>
+
+        <button
+          onClick={() => handleSwitchTab('admin-settings')}
+          className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
+            activeTab === 'SETTINGS'
+              ? 'bg-amber-500 text-slate-950 shadow-md'
+              : 'bg-slate-900/90 text-slate-400 hover:text-white hover:bg-slate-800'
+          }`}
+        >
+          <Settings className="w-3.5 h-3.5" />
+          <span>Ajustes</span>
+        </button>
+      </div>
+
       {/* Global alert banner */}
       {notificationMsg && (
         <div className="p-3.5 rounded-xl bg-emerald-500/20 border border-emerald-500/50 text-emerald-300 text-xs font-bold flex items-center gap-2 animate-in fade-in">
@@ -325,73 +532,98 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       {activeTab === 'OVERVIEW' && (
         <div className="space-y-6">
           {/* Key Metrics Grid */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
             <div
               onClick={() => handleSwitchTab('admin-bookings')}
-              className="p-5 rounded-2xl bg-[#0B192C] border border-amber-500/20 shadow-lg cursor-pointer hover:border-amber-400 transition-all"
+              className="p-4 sm:p-5 rounded-2xl bg-[#0B192C] border border-amber-500/20 shadow-lg cursor-pointer hover:border-amber-400 transition-all"
             >
               <div className="flex items-center justify-between">
-                <span className="text-xs uppercase font-bold tracking-wider text-slate-400">Viajes Hoy</span>
-                <div className="p-2 rounded-xl bg-amber-500/10 text-amber-400">
-                  <Calendar className="w-5 h-5" />
+                <span className="text-[11px] uppercase font-bold tracking-wider text-slate-400">Viajes Hoy</span>
+                <div className="p-1.5 sm:p-2 rounded-xl bg-amber-500/10 text-amber-400">
+                  <Calendar className="w-4 h-4 sm:w-5 sm:h-5" />
                 </div>
               </div>
-              <div className="text-2xl sm:text-3xl font-black text-white mt-2 font-mono">
+              <div className="text-xl sm:text-3xl font-black text-white mt-2 font-mono">
                 {todayBookings.length}
               </div>
-              <p className="text-[11px] text-amber-400 mt-1">
-                {bookings.filter((b) => b.status === 'SOLICITADA').length} pendientes de chofer →
+              <p className="text-[10px] sm:text-[11px] text-amber-400 mt-1">
+                {bookings.filter((b) => b.status === 'SOLICITADA').length} pendientes →
               </p>
             </div>
 
             <div
               onClick={() => handleSwitchTab('admin-shipments')}
-              className="p-5 rounded-2xl bg-[#0B192C] border border-sky-500/20 shadow-lg cursor-pointer hover:border-sky-400 transition-all"
+              className="p-4 sm:p-5 rounded-2xl bg-[#0B192C] border border-sky-500/20 shadow-lg cursor-pointer hover:border-sky-400 transition-all"
             >
               <div className="flex items-center justify-between">
-                <span className="text-xs uppercase font-bold tracking-wider text-slate-400">Encomiendas Hoy</span>
-                <div className="p-2 rounded-xl bg-sky-500/10 text-sky-400">
-                  <Package className="w-5 h-5" />
+                <span className="text-[11px] uppercase font-bold tracking-wider text-slate-400">Encomiendas</span>
+                <div className="p-1.5 sm:p-2 rounded-xl bg-sky-500/10 text-sky-400">
+                  <Package className="w-4 h-4 sm:w-5 sm:h-5" />
                 </div>
               </div>
-              <div className="text-2xl sm:text-3xl font-black text-white mt-2 font-mono">
+              <div className="text-xl sm:text-3xl font-black text-white mt-2 font-mono">
                 {todayShipments.length}
               </div>
-              <p className="text-[11px] text-sky-400 mt-1">
-                {shipments.filter((s) => s.status === 'REGISTRADO').length} listas para despacho →
+              <p className="text-[10px] sm:text-[11px] text-sky-400 mt-1">
+                {shipments.filter((s) => s.status === 'REGISTRADO').length} por despachar →
               </p>
             </div>
 
             <div
               onClick={() => handleSwitchTab('admin-drivers')}
-              className="p-5 rounded-2xl bg-[#0B192C] border border-emerald-500/20 shadow-lg cursor-pointer hover:border-emerald-400 transition-all"
+              className="p-4 sm:p-5 rounded-2xl bg-[#0B192C] border border-emerald-500/20 shadow-lg cursor-pointer hover:border-emerald-400 transition-all"
             >
               <div className="flex items-center justify-between">
-                <span className="text-xs uppercase font-bold tracking-wider text-slate-400">Conductores Activos</span>
-                <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400">
-                  <Car className="w-5 h-5" />
+                <span className="text-[11px] uppercase font-bold tracking-wider text-slate-400">Conductores</span>
+                <div className="p-1.5 sm:p-2 rounded-xl bg-emerald-500/10 text-emerald-400">
+                  <Car className="w-4 h-4 sm:w-5 sm:h-5" />
                 </div>
               </div>
-              <div className="text-2xl sm:text-3xl font-black text-white mt-2 font-mono">
+              <div className="text-xl sm:text-3xl font-black text-white mt-2 font-mono">
                 {users.filter((u) => u.role === 'DRIVER').length}
               </div>
-              <p className="text-[11px] text-emerald-400 mt-1">Flota ejecutiva disponible →</p>
+              <p className="text-[10px] sm:text-[11px] text-emerald-400 mt-1">Flota activa →</p>
+            </div>
+
+            <div
+              id="card-admin-metric-customers"
+              onClick={() => handleSwitchTab('admin-customers')}
+              className="p-4 sm:p-5 rounded-2xl bg-[#0B192C] border border-purple-500/30 shadow-lg cursor-pointer hover:border-purple-400 hover:shadow-purple-500/10 transition-all group"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] uppercase font-bold tracking-wider text-purple-300">Clientes</span>
+                <div className="p-1.5 sm:p-2 rounded-xl bg-purple-500/15 text-purple-400 group-hover:scale-110 transition-transform">
+                  <Users className="w-4 h-4 sm:w-5 sm:h-5" />
+                </div>
+              </div>
+              <div className="text-xl sm:text-3xl font-black text-white mt-2 font-mono">
+                {users.filter((u) => u.role === 'CUSTOMER').length}
+              </div>
+              <p className="text-[10px] sm:text-[11px] text-purple-400 mt-1">
+                {users.filter((u) => u.role === 'CUSTOMER' && u.status === 'suspended').length > 0 ? (
+                  <span className="text-red-400 font-semibold">
+                    {users.filter((u) => u.role === 'CUSTOMER' && u.status === 'suspended').length} susp. • Gestionar →
+                  </span>
+                ) : (
+                  'Administrar clientes →'
+                )}
+              </p>
             </div>
 
             <div
               onClick={() => handleSwitchTab('admin-payments')}
-              className="p-5 rounded-2xl bg-[#0B192C] border border-amber-500/20 shadow-lg cursor-pointer hover:border-amber-400 transition-all"
+              className="p-4 sm:p-5 rounded-2xl bg-[#0B192C] border border-amber-500/20 shadow-lg cursor-pointer hover:border-amber-400 transition-all col-span-2 sm:col-span-1"
             >
               <div className="flex items-center justify-between">
-                <span className="text-xs uppercase font-bold tracking-wider text-slate-400">Ingresos Totales</span>
-                <div className="p-2 rounded-xl bg-amber-500/10 text-amber-400">
-                  <DollarSign className="w-5 h-5" />
+                <span className="text-[11px] uppercase font-bold tracking-wider text-slate-400">Ingresos</span>
+                <div className="p-1.5 sm:p-2 rounded-xl bg-amber-500/10 text-amber-400">
+                  <DollarSign className="w-4 h-4 sm:w-5 sm:h-5" />
                 </div>
               </div>
-              <div className="text-2xl sm:text-3xl font-black text-amber-400 mt-2 font-mono">
+              <div className="text-xl sm:text-3xl font-black text-amber-400 mt-2 font-mono">
                 ${totalIncome.toFixed(2)}
               </div>
-              <p className="text-[11px] text-slate-400 mt-1">Servicios completados</p>
+              <p className="text-[10px] sm:text-[11px] text-slate-400 mt-1">Total recaudado</p>
             </div>
           </div>
 
@@ -539,10 +771,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
                     <div>
                       <span className="text-slate-500 text-[10px] uppercase font-bold block">Conductor Asignado</span>
-                      {b.assignedDriverName ? (
+                      {b.assignedDriverName || b.driverName ? (
                         <div>
-                          <p className="font-bold text-emerald-400">{b.assignedDriverName}</p>
-                          <p className="text-slate-400">Placa: {b.assignedVehiclePlate || 'Toyota'}</p>
+                          <p className="font-bold text-emerald-400">{b.assignedDriverName || b.driverName}</p>
+                          <p className="text-slate-400">Placa: {b.assignedVehiclePlate || b.vehiclePlate || 'Toyota'}</p>
                         </div>
                       ) : (
                         <span className="text-amber-400 font-bold">⚠️ Sin asignar</span>
@@ -550,13 +782,32 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     </div>
                   </div>
 
-                  <div className="pt-2 border-t border-slate-800 flex justify-end gap-2">
+                  <div className="pt-2 border-t border-slate-800 flex items-center justify-between gap-2 flex-wrap">
+                    <div>
+                      {/* Delete Trip button: ONLY visible when status is FINALIZADO (Requested by user) */}
+                      {b.status === 'FINALIZADO' && (
+                        <button
+                          id={`btn-delete-trip-${b.id}`}
+                          type="button"
+                          onClick={() => handleDeleteBooking(b.id, b.code || b.id)}
+                          className="px-3 py-1.5 rounded-xl bg-red-500/15 hover:bg-red-500/25 text-red-300 border border-red-500/40 text-xs font-bold flex items-center gap-1.5 transition active:scale-95"
+                          title="Eliminar viaje finalizado"
+                        >
+                          <Trash2 className="w-3.5 h-3.5 text-red-400" />
+                          <span>Eliminar Viaje</span>
+                        </button>
+                      )}
+                    </div>
+
                     <button
                       id={`btn-assign-driver-${b.id}`}
-                      onClick={() => setAssigningBooking(b)}
+                      onClick={() => {
+                        setAssigningBooking(b);
+                        setSelectedDriverId(b.assignedDriverId || b.driverId || '');
+                      }}
                       className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs uppercase tracking-wider"
                     >
-                      {b.assignedDriverName ? 'Cambiar Conductor' : 'Asignar Conductor'}
+                      {b.assignedDriverName || b.driverName ? 'Cambiar Conductor' : 'Asignar Conductor'}
                     </button>
                   </div>
                 </div>
@@ -647,11 +898,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
                   <div>
                     <span className="text-slate-500 text-[10px] uppercase font-bold block">Conductor Asignado:</span>
-                    {s.assignedDriverId && s.driverName ? (
+                    {(s.assignedDriverName || s.driverName) ? (
                       <div className="space-y-0.5">
-                        <p className="font-bold text-emerald-400">{s.driverName}</p>
+                        <p className="font-bold text-emerald-400">{s.assignedDriverName || s.driverName}</p>
                         <p className="text-[11px] text-slate-400">Tel: {s.driverPhone || '0999999999'}</p>
-                        <p className="text-[11px] text-slate-400">Placa: {s.vehiclePlate || 'Toyota'}</p>
+                        <p className="text-[11px] text-slate-400">Placa: {s.assignedVehiclePlate || s.vehiclePlate || 'Toyota'}</p>
                       </div>
                     ) : (
                       <div className="p-2 rounded-xl bg-amber-500/10 border border-amber-500/30">
@@ -662,21 +913,37 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   </div>
                 </div>
 
-                <div className="pt-2 border-t border-slate-800 flex items-center justify-between gap-2">
-                  <span className="text-[11px] text-slate-400">
-                    Estado: <strong className="text-amber-300 uppercase">{s.status.replace(/_/g, ' ')}</strong>
-                  </span>
+                <div className="pt-2 border-t border-slate-800 flex items-center justify-between gap-2 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] text-slate-400">
+                      Estado: <strong className="text-amber-300 uppercase">{s.status.replace(/_/g, ' ')}</strong>
+                    </span>
+
+                    {/* Delete Shipment button: ONLY visible when status is ENTREGADA or ENTREGADO (Requested by user) */}
+                    {(s.status === 'ENTREGADA' || s.status === 'ENTREGADO') && (
+                      <button
+                        id={`btn-delete-shipment-${s.id}`}
+                        type="button"
+                        onClick={() => handleDeleteShipment(s.id, s.packageDescription)}
+                        className="px-3 py-1.5 rounded-xl bg-red-500/15 hover:bg-red-500/25 text-red-300 border border-red-500/40 text-xs font-bold flex items-center gap-1.5 transition active:scale-95 ml-2"
+                        title="Eliminar encomienda entregada"
+                      >
+                        <Trash2 className="w-3.5 h-3.5 text-red-400" />
+                        <span>Eliminar Encomienda</span>
+                      </button>
+                    )}
+                  </div>
 
                   {/* ASIGNAR CONDUCTOR BUTTON FOR SHIPMENTS (Requested by user) */}
                   <button
                     id={`btn-assign-driver-shipment-${s.id}`}
                     onClick={() => {
                       setAssigningShipment(s);
-                      setSelectedShipmentDriverId(s.assignedDriverId || '');
+                      setSelectedShipmentDriverId(s.assignedDriverId || s.driverId || '');
                     }}
                     className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs uppercase tracking-wider flex items-center gap-1.5 shadow-md active:scale-95 transition"
                   >
-                    <span>{s.assignedDriverId ? 'Cambiar Conductor' : 'Asignar Conductor'}</span>
+                    <span>{(s.assignedDriverName || s.driverName) ? 'Cambiar Conductor' : 'Asignar Conductor'}</span>
                   </button>
                 </div>
               </div>
@@ -764,65 +1031,299 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         </div>
       )}
 
-      {/* 5. CUSTOMERS */}
-      {activeTab === 'CUSTOMERS' && (
-        <div className="p-5 rounded-3xl bg-[#0B192C] border border-slate-800 shadow-xl space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <h3 className="text-base font-bold text-white">Directorio de Clientes Registrados</h3>
-              <p className="text-xs text-slate-400">Historial y contacto de usuarios</p>
-            </div>
-            <div className="relative w-full sm:w-64">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-              <input
-                type="text"
-                value={clientSearchQuery}
-                onChange={(e) => setClientSearchQuery(e.target.value)}
-                placeholder="Buscar por nombre o cédula..."
-                className="w-full pl-9 pr-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white"
-              />
-            </div>
-          </div>
+      {/* 5. CUSTOMERS (Prompt: "COMO ADMIN DEBO PODER SUSPENDER Y ELIMINAR CLIENTES") */}
+      {activeTab === 'CUSTOMERS' && (() => {
+        const allCustomers = users.filter((u) => u.role === 'CUSTOMER');
+        const activeCount = allCustomers.filter((c) => c.status === 'active').length;
+        const suspendedCount = allCustomers.filter((c) => c.status === 'suspended').length;
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-slate-300">
-              <thead className="bg-slate-900 text-[10px] uppercase text-slate-400 border-b border-slate-800">
-                <tr>
-                  <th className="p-3">Cliente</th>
-                  <th className="p-3">Cédula</th>
-                  <th className="p-3">Teléfono</th>
-                  <th className="p-3">Viajes Realizados</th>
-                  <th className="p-3">Estado</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800">
-                {users
-                  .filter((u) => u.role === 'CUSTOMER')
-                  .filter((c) =>
-                    c.fullName.toLowerCase().includes(clientSearchQuery.toLowerCase()) ||
-                    (c.cedula && c.cedula.includes(clientSearchQuery))
-                  )
-                  .map((c) => {
-                    const clientTrips = bookings.filter((b) => b.customerId === c.id || b.customerPhone === c.phone);
-                    return (
-                      <tr key={c.id} className="hover:bg-slate-900/40">
-                        <td className="p-3 font-semibold text-white">{c.fullName}</td>
-                        <td className="p-3 font-mono">{c.cedula || c.username}</td>
-                        <td className="p-3">{c.phone}</td>
-                        <td className="p-3 font-bold text-amber-400 font-mono">{clientTrips.length} viajes</td>
-                        <td className="p-3">
-                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300">
-                            {c.status.toUpperCase()}
-                          </span>
-                        </td>
+        const filteredCustomers = allCustomers
+          .filter((c) => {
+            if (clientStatusFilter === 'ACTIVE') return c.status === 'active';
+            if (clientStatusFilter === 'SUSPENDED') return c.status === 'suspended';
+            return true;
+          })
+          .filter((c) => {
+            if (!clientSearchQuery.trim()) return true;
+            const q = clientSearchQuery.toLowerCase();
+            return (
+              c.fullName.toLowerCase().includes(q) ||
+              (c.cedula && c.cedula.includes(q)) ||
+              (c.username && c.username.toLowerCase().includes(q)) ||
+              (c.phone && c.phone.includes(q)) ||
+              (c.email && c.email.toLowerCase().includes(q))
+            );
+          });
+
+        return (
+          <div className="space-y-5">
+            {/* Header & Stats Banner */}
+            <div className="p-5 sm:p-6 rounded-3xl bg-[#0B192C] border border-slate-800 shadow-xl space-y-4">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-purple-400 px-2.5 py-0.5 rounded-full bg-purple-500/15 border border-purple-500/30">
+                      Módulo de Control
+                    </span>
+                    <span className="text-xs text-slate-400">Gestión de Pasajeros y Clientes</span>
+                  </div>
+                  <h3 className="text-lg sm:text-xl font-black text-white font-brand mt-1">
+                    Directorio y Control de Clientes
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    Como Administrador puedes suspender el acceso a clientes infractores o eliminar sus cuentas de forma definitiva.
+                  </p>
+                </div>
+
+                {/* Quick Stats Badges */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <div className="px-3.5 py-2 rounded-xl bg-slate-900 border border-slate-800 flex items-center gap-2">
+                    <Users className="w-4 h-4 text-purple-400" />
+                    <div>
+                      <span className="text-[10px] text-slate-400 block uppercase font-bold">Total Clientes</span>
+                      <span className="text-sm font-bold font-mono text-white">{allCustomers.length}</span>
+                    </div>
+                  </div>
+
+                  <div className="px-3.5 py-2 rounded-xl bg-emerald-950/40 border border-emerald-500/30 flex items-center gap-2">
+                    <UserCheck className="w-4 h-4 text-emerald-400" />
+                    <div>
+                      <span className="text-[10px] text-emerald-300 block uppercase font-bold">Activos</span>
+                      <span className="text-sm font-bold font-mono text-emerald-400">{activeCount}</span>
+                    </div>
+                  </div>
+
+                  <div className="px-3.5 py-2 rounded-xl bg-red-950/40 border border-red-500/30 flex items-center gap-2">
+                    <UserX className="w-4 h-4 text-red-400" />
+                    <div>
+                      <span className="text-[10px] text-red-300 block uppercase font-bold">Suspendidos</span>
+                      <span className="text-sm font-bold font-mono text-red-400">{suspendedCount}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Filters & Search Toolbar */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-slate-800">
+                {/* Status Filter Buttons */}
+                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+                  <button
+                    onClick={() => setClientStatusFilter('ALL')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+                      clientStatusFilter === 'ALL'
+                        ? 'bg-purple-600 text-white shadow'
+                        : 'bg-slate-900 text-slate-400 hover:text-white hover:bg-slate-800'
+                    }`}
+                  >
+                    Todos ({allCustomers.length})
+                  </button>
+                  <button
+                    onClick={() => setClientStatusFilter('ACTIVE')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+                      clientStatusFilter === 'ACTIVE'
+                        ? 'bg-emerald-600 text-white shadow'
+                        : 'bg-slate-900 text-slate-400 hover:text-white hover:bg-slate-800'
+                    }`}
+                  >
+                    Activos ({activeCount})
+                  </button>
+                  <button
+                    onClick={() => setClientStatusFilter('SUSPENDED')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+                      clientStatusFilter === 'SUSPENDED'
+                        ? 'bg-red-600 text-white shadow'
+                        : 'bg-slate-900 text-slate-400 hover:text-white hover:bg-slate-800'
+                    }`}
+                  >
+                    Suspendidos ({suspendedCount})
+                  </button>
+                </div>
+
+                {/* Search Bar */}
+                <div className="relative w-full sm:w-72">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <input
+                    type="text"
+                    value={clientSearchQuery}
+                    onChange={(e) => setClientSearchQuery(e.target.value)}
+                    placeholder="Buscar por nombre, cédula o teléfono..."
+                    className="w-full pl-9 pr-8 py-2 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-amber-500"
+                  />
+                  {clientSearchQuery && (
+                    <button
+                      onClick={() => setClientSearchQuery('')}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Customers Table / Cards */}
+            <div className="p-5 rounded-3xl bg-[#0B192C] border border-slate-800 shadow-xl">
+              {filteredCustomers.length === 0 ? (
+                <div className="text-center py-12">
+                  <Users className="w-12 h-12 text-slate-600 mx-auto mb-2 opacity-60" />
+                  <p className="text-sm text-slate-300 font-bold">No se encontraron clientes</p>
+                  <p className="text-xs text-slate-500 mt-1">
+                    {clientSearchQuery
+                      ? 'Ningún cliente coincide con los términos de búsqueda.'
+                      : 'No hay clientes registrados en este estado.'}
+                  </p>
+                  {clientSearchQuery && (
+                    <button
+                      onClick={() => setClientSearchQuery('')}
+                      className="mt-3 px-3 py-1.5 rounded-lg bg-slate-800 text-amber-400 text-xs font-bold hover:bg-slate-700"
+                    >
+                      Limpiar búsqueda
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs text-slate-300">
+                    <thead className="bg-slate-900/90 text-[10px] uppercase text-slate-400 border-b border-slate-800 font-bold tracking-wider">
+                      <tr>
+                        <th className="p-3">Cliente</th>
+                        <th className="p-3">Cédula / Usuario</th>
+                        <th className="p-3">Contacto</th>
+                        <th className="p-3">Historial</th>
+                        <th className="p-3">Estado</th>
+                        <th className="p-3 text-right">Acciones de Admin</th>
                       </tr>
-                    );
-                  })}
-              </tbody>
-            </table>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800/80">
+                      {filteredCustomers.map((c) => {
+                        const clientTrips = bookings.filter((b) => b.customerId === c.id || b.customerPhone === c.phone);
+                        const clientShipments = shipments.filter((s) => s.customerId === c.id);
+                        const isSuspended = c.status === 'suspended';
+
+                        return (
+                          <tr key={c.id} className="hover:bg-slate-900/50 transition-colors">
+                            {/* Cliente info */}
+                            <td className="p-3">
+                              <div className="flex items-center gap-2.5">
+                                <div className="w-8 h-8 rounded-full bg-purple-500/20 text-purple-300 font-bold flex items-center justify-center text-xs shrink-0 border border-purple-500/30">
+                                  {c.fullName.charAt(0).toUpperCase()}
+                                </div>
+                                <div>
+                                  <span className="font-bold text-white block text-xs sm:text-sm">
+                                    {c.fullName}
+                                  </span>
+                                  {c.email && (
+                                    <span className="text-[11px] text-slate-400 truncate block max-w-[180px]">
+                                      {c.email}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </td>
+
+                            {/* Cédula */}
+                            <td className="p-3 font-mono text-slate-200">
+                              {c.cedula || c.username}
+                            </td>
+
+                            {/* Teléfono & WhatsApp link */}
+                            <td className="p-3">
+                              {c.phone ? (
+                                <a
+                                  href={`https://wa.me/593${c.phone.replace(/\D/g, '').replace(/^0/, '')}?text=Estimado%20${encodeURIComponent(c.fullName)},%20le%20escribimos%20desde%20la%20administración%20de%20PACHA%20Transporte%20Ejecutivo.`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-950/50 border border-emerald-500/30 text-emerald-300 hover:bg-emerald-900/50 transition text-[11px] font-medium"
+                                  title="Contactar al cliente por WhatsApp"
+                                >
+                                  <Phone className="w-3 h-3 text-emerald-400" />
+                                  <span>{c.phone}</span>
+                                </a>
+                              ) : (
+                                <span className="text-slate-500">Sin teléfono</span>
+                              )}
+                            </td>
+
+                            {/* Historial Viajes & Encomiendas */}
+                            <td className="p-3">
+                              <div className="flex flex-col gap-0.5">
+                                <span className="text-amber-400 font-bold font-mono text-[11px]">
+                                  {clientTrips.length} {clientTrips.length === 1 ? 'viaje' : 'viajes'}
+                                </span>
+                                <span className="text-sky-400 font-medium font-mono text-[10px]">
+                                  {clientShipments.length} {clientShipments.length === 1 ? 'encomienda' : 'encomiendas'}
+                                </span>
+                              </div>
+                            </td>
+
+                            {/* Estado badge */}
+                            <td className="p-3">
+                              <span
+                                className={`px-2.5 py-1 rounded-full text-[10px] font-black tracking-wider uppercase border inline-flex items-center gap-1 ${
+                                  isSuspended
+                                    ? 'bg-red-500/20 text-red-300 border-red-500/40'
+                                    : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                                }`}
+                              >
+                                <span
+                                  className={`w-1.5 h-1.5 rounded-full ${
+                                    isSuspended ? 'bg-red-400' : 'bg-emerald-400 animate-pulse'
+                                  }`}
+                                />
+                                {isSuspended ? 'SUSPENDIDO' : 'ACTIVO'}
+                              </span>
+                            </td>
+
+                            {/* Acciones de Admin: Suspender y Eliminar */}
+                            <td className="p-3 text-right">
+                              <div className="flex items-center justify-end gap-1.5">
+                                {/* Botón Suspender / Reactivar */}
+                                <button
+                                  id={`btn-toggle-suspend-${c.id}`}
+                                  onClick={() => handleToggleSuspendCustomer(c)}
+                                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 border ${
+                                    isSuspended
+                                      ? 'bg-emerald-600/30 text-emerald-300 border-emerald-500/40 hover:bg-emerald-600 hover:text-white'
+                                      : 'bg-amber-500/20 text-amber-300 border-amber-500/40 hover:bg-amber-500 hover:text-slate-950'
+                                  }`}
+                                  title={isSuspended ? 'Reactivar cuenta del cliente' : 'Suspender cliente'}
+                                >
+                                  {isSuspended ? (
+                                    <>
+                                      <Check className="w-3.5 h-3.5" />
+                                      <span>Reactivar</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <ShieldAlert className="w-3.5 h-3.5" />
+                                      <span>Suspender</span>
+                                    </>
+                                  )}
+                                </button>
+
+                                {/* Botón Eliminar Cliente */}
+                                <button
+                                  id={`btn-delete-customer-${c.id}`}
+                                  onClick={() => handleDeleteCustomer(c)}
+                                  className="p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl text-xs font-bold bg-red-500/15 text-red-400 border border-red-500/30 hover:bg-red-600 hover:text-white hover:border-red-600 transition flex items-center gap-1"
+                                  title="Eliminar permanentemente este cliente"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                  <span className="hidden sm:inline">Eliminar</span>
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* 6. CITIES & FARES */}
       {activeTab === 'ROUTES' && (
@@ -878,7 +1379,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 <thead className="bg-slate-900 text-[10px] uppercase text-slate-400 border-b border-slate-800">
                   <tr>
                     <th className="p-3">Ruta (Origen ↔ Destino)</th>
-                    <th className="p-3">Precio Pasajero</th>
+                    <th className="p-3">Precio del Viaje</th>
                     <th className="p-3">Base Encomienda</th>
                     <th className="p-3">Tiempo Estimado</th>
                     <th className="p-3 text-right">Acción</th>
@@ -1197,6 +1698,173 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               </div>
             </div>
 
+            {/* Section 4: Bank QR Codes for Direct Transfer Payments (Requested by user: "AGREGA UN CUADRO PARA SUBIR UNA IMAGEN DEL QR DEL BANCO, DAME DOS OPCIONES PICHINCHA Y GUAYAQUIL") */}
+            <div className="p-4 sm:p-5 rounded-2xl bg-slate-900 border border-amber-500/30 space-y-4 shadow-lg">
+              <div className="flex items-center gap-2 text-amber-400 font-black uppercase tracking-wider">
+                <QrCode className="w-4 h-4 text-amber-400" />
+                <span>4. Códigos QR para Pagos Bancarios (Pichincha DeUna y Banco Guayaquil)</span>
+              </div>
+              <p className="text-[11px] text-slate-400">
+                Sube la imagen del código QR oficial de cada banco. Estos QR se mostrarán automáticamente al cliente cuando elija pagar con <strong>Transferencia Bancaria</strong> (incluyendo el QR de <strong>DeUna</strong> de Banco Pichincha) para que pueda escanearlo y pagar de forma inmediata.
+              </p>
+
+              {/* Hidden file inputs for QRs */}
+              <input
+                ref={pichinchaQrInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => handleUploadBankQr(e, 'pichincha')}
+              />
+              <input
+                ref={guayaquilQrInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => handleUploadBankQr(e, 'guayaquil')}
+              />
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+                {/* Option 1: Banco Pichincha (DeUna) */}
+                <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-3 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-amber-400 text-xs flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-amber-400"></span>
+                        Banco Pichincha (DeUna QR)
+                      </span>
+                      {appSettingsForm.bankQrPichincha ? (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center gap-1">
+                          <Check className="w-2.5 h-2.5" />
+                          QR Activo
+                        </span>
+                      ) : (
+                        <span className="text-[10px] text-slate-500">Sin QR subido</span>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-slate-400 mt-1">
+                      Código QR oficial para pagos directos desde Banco Pichincha o app DeUna.
+                    </p>
+                  </div>
+
+                  <div className="flex flex-col items-center justify-center p-3 rounded-xl bg-slate-900 border border-dashed border-slate-700 min-h-[140px]">
+                    {appSettingsForm.bankQrPichincha ? (
+                      <div className="space-y-2 text-center">
+                        <img
+                          src={appSettingsForm.bankQrPichincha}
+                          alt="QR Pichincha DeUna"
+                          className="w-28 h-28 object-contain rounded-lg bg-white p-1.5 shadow-md mx-auto"
+                        />
+                        <div className="flex items-center justify-center gap-2 pt-1">
+                          <button
+                            type="button"
+                            onClick={() => pichinchaQrInputRef.current?.click()}
+                            className="px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-[11px] transition"
+                          >
+                            Cambiar QR
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveBankQr('pichincha')}
+                            className="px-2.5 py-1 rounded-lg bg-red-950/50 hover:bg-red-900 text-red-300 text-[11px] font-bold border border-red-500/40 transition"
+                          >
+                            Eliminar
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-center space-y-2">
+                        <div className="w-10 h-10 rounded-xl bg-amber-500/15 text-amber-400 flex items-center justify-center mx-auto">
+                          <QrCode className="w-5 h-5" />
+                        </div>
+                        <p className="text-[11px] text-slate-400 font-medium">
+                          No has subido el QR de Pichincha / DeUna
+                        </p>
+                        <button
+                          type="button"
+                          id="btn-upload-qr-pichincha"
+                          onClick={() => pichinchaQrInputRef.current?.click()}
+                          className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs flex items-center gap-1.5 mx-auto active:scale-95 transition"
+                        >
+                          <Upload className="w-3.5 h-3.5" />
+                          <span>Subir QR Pichincha</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Option 2: Banco Guayaquil */}
+                <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-3 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-pink-400 text-xs flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-pink-400"></span>
+                        Banco Guayaquil QR
+                      </span>
+                      {appSettingsForm.bankQrGuayaquil ? (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center gap-1">
+                          <Check className="w-2.5 h-2.5" />
+                          QR Activo
+                        </span>
+                      ) : (
+                        <span className="text-[10px] text-slate-500">Sin QR subido</span>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-slate-400 mt-1">
+                      Código QR para transferencias directas desde la aplicación móvil de Banco Guayaquil.
+                    </p>
+                  </div>
+
+                  <div className="flex flex-col items-center justify-center p-3 rounded-xl bg-slate-900 border border-dashed border-slate-700 min-h-[140px]">
+                    {appSettingsForm.bankQrGuayaquil ? (
+                      <div className="space-y-2 text-center">
+                        <img
+                          src={appSettingsForm.bankQrGuayaquil}
+                          alt="QR Banco Guayaquil"
+                          className="w-28 h-28 object-contain rounded-lg bg-white p-1.5 shadow-md mx-auto"
+                        />
+                        <div className="flex items-center justify-center gap-2 pt-1">
+                          <button
+                            type="button"
+                            onClick={() => guayaquilQrInputRef.current?.click()}
+                            className="px-2.5 py-1 rounded-lg bg-pink-500 hover:bg-pink-400 text-white font-bold text-[11px] transition"
+                          >
+                            Cambiar QR
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveBankQr('guayaquil')}
+                            className="px-2.5 py-1 rounded-lg bg-red-950/50 hover:bg-red-900 text-red-300 text-[11px] font-bold border border-red-500/40 transition"
+                          >
+                            Eliminar
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-center space-y-2">
+                        <div className="w-10 h-10 rounded-xl bg-pink-500/15 text-pink-400 flex items-center justify-center mx-auto">
+                          <QrCode className="w-5 h-5" />
+                        </div>
+                        <p className="text-[11px] text-slate-400 font-medium">
+                          No has subido el QR de Banco Guayaquil
+                        </p>
+                        <button
+                          type="button"
+                          id="btn-upload-qr-guayaquil"
+                          onClick={() => guayaquilQrInputRef.current?.click()}
+                          className="px-3 py-1.5 rounded-xl bg-pink-500 hover:bg-pink-400 text-white font-bold text-xs flex items-center gap-1.5 mx-auto active:scale-95 transition"
+                        >
+                          <Upload className="w-3.5 h-3.5" />
+                          <span>Subir QR Guayaquil</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <button
               type="submit"
               className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-amber-500 via-amber-600 to-amber-500 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black text-sm uppercase tracking-wider shadow-xl flex items-center justify-center gap-2 active:scale-98 transition-all"
@@ -1508,7 +2176,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
             <div className="space-y-3 text-xs">
               <div>
-                <label className="block font-bold text-slate-300 mb-1">Precio por Pasajero (USD) *</label>
+                <label className="block font-bold text-slate-300 mb-1">Precio del Viaje (USD) *</label>
                 <input
                   type="number"
                   step="0.50"
