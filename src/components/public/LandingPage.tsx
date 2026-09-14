@@ -17,11 +17,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   onOpenGuide
 }) => {
   const [settings, setSettings] = useState(() => PachaStorage.getSettings());
-  const cities = PachaStorage.getActiveCities();
+  const [cities, setCities] = useState(() => PachaStorage.getActiveCities());
 
   useEffect(() => {
     return PachaStorage.subscribe(() => {
       setSettings(PachaStorage.getSettings());
+      setCities(PachaStorage.getActiveCities());
     });
   }, []);
 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Package,
   MapPin,
@@ -28,8 +28,16 @@ export const ShipmentFlow: React.FC<ShipmentFlowProps> = ({
   onOpenLogin,
   onShipmentComplete
 }) => {
-  const cities = PachaStorage.getActiveCities();
-  const settings = PachaStorage.getSettings();
+  const [cities, setCities] = useState(() => PachaStorage.getActiveCities());
+  const [settings, setSettings] = useState(() => PachaStorage.getSettings());
+
+  useEffect(() => {
+    const unsub = PachaStorage.subscribe(() => {
+      setCities(PachaStorage.getActiveCities());
+      setSettings(PachaStorage.getSettings());
+    });
+    return () => unsub();
+  }, []);
 
   const [originCityId, setOriginCityId] = useState(cities[0]?.id || '');
   const [destinationCityId, setDestinationCityId] = useState(cities[1]?.id || '');

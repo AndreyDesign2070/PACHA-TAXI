@@ -6,35 +6,43 @@ service cloud.firestore {
     }
 
     match /cities/{cityId} {
-      allow read, write: if isValidId(cityId);
+      allow get, list: if true;
+      allow write: if isValidId(cityId);
     }
 
     match /fares/{fareId} {
-      allow read, write: if isValidId(fareId);
+      allow get, list: if true;
+      allow write: if isValidId(fareId);
     }
 
     match /vehicles/{vehicleId} {
-      allow read, write: if isValidId(vehicleId);
+      allow get, list: if true;
+      allow write: if isValidId(vehicleId);
     }
 
     match /bookings/{bookingId} {
-      allow read, write: if isValidId(bookingId);
+      allow get, list: if true;
+      allow write: if isValidId(bookingId);
     }
 
     match /shipments/{shipmentId} {
-      allow read, write: if isValidId(shipmentId);
+      allow get, list: if true;
+      allow write: if isValidId(shipmentId);
     }
 
     match /users/{userId} {
-      allow read, write: if isValidId(userId);
+      allow get, list: if true;
+      allow write: if isValidId(userId);
     }
 
     match /notifications/{notificationId} {
-      allow read, write: if isValidId(notificationId);
+      allow get, list: if true;
+      allow write: if isValidId(notificationId);
     }
 
     match /settings/{settingsId} {
-      allow read, write: if isValidId(settingsId);
+      allow get, list: if true;
+      allow write: if isValidId(settingsId);
     }
 
     match /test/{testId} {
@@ -42,3 +50,4 @@ service cloud.firestore {
     }
   }
 }
+

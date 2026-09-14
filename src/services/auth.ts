@@ -72,8 +72,9 @@ export const PachaAuth = {
     // client demo: cliente123 or user registered
     const storedPasswords = JSON.parse(localStorage.getItem('pacha_passwords_v1') || '{}');
     const userStoredPass = storedPasswords[user.id] || storedPasswords[user.username] || (user.role === 'ADMIN' || user.role === 'DRIVER' ? 'pacha2026' : 'cliente123');
+    const expectedPassword = user.password || userStoredPass;
 
-    if (cleanPass !== userStoredPass && cleanPass !== 'pacha2026') {
+    if (cleanPass !== expectedPassword && cleanPass !== userStoredPass && cleanPass !== 'pacha2026') {
       return { success: false, error: 'Contraseña incorrecta. Verifique sus datos.' };
     }
 
@@ -106,11 +107,12 @@ export const PachaAuth = {
       fullName: data.fullName.trim(),
       phone: data.phone.trim(),
       email: data.email?.trim() || '',
+      password: data.password.trim(),
       role: 'CUSTOMER',
       status: 'active'
     });
 
-    // Save password
+    // Save password locally and into user object
     const storedPasswords = JSON.parse(localStorage.getItem('pacha_passwords_v1') || '{}');
     storedPasswords[newUser.id] = data.password.trim();
     storedPasswords[newUser.username] = data.password.trim();
@@ -139,6 +141,7 @@ export const PachaAuth = {
       fullName: driverData.fullName.trim(),
       cedula: driverData.cedula.trim(),
       phone: driverData.phone.trim(),
+      password: driverData.password.trim(),
       role: 'DRIVER',
       status: 'active',
       vehicleId: driverData.vehicleId
@@ -174,6 +177,7 @@ export const PachaAuth = {
       fullName: adminData.fullName.trim(),
       cedula: adminData.cedula.trim(),
       phone: adminData.phone.trim(),
+      password: adminData.password.trim(),
       role: 'ADMIN',
       status: 'active'
     });

@@ -55,38 +55,9 @@ const INITIAL_FARES: Fare[] = [
 ];
 
 // Initial Seed Vehicles
-const INITIAL_VEHICLES: Vehicle[] = [
-  {
-    id: 'veh-1',
-    make: 'Toyota',
-    model: 'Fortuner 4x4',
-    year: 2024,
-    color: 'Negro Ejecutivo',
-    plate: 'MBP-4521',
-    capacity: 4,
-    photoUrl: 'https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&w=600&q=80',
-    status: 'DISPONIBLE',
-    assignedDriverId: 'usr-driver-1',
-    createdAt: '2026-08-01T08:00:00Z',
-    updatedAt: '2026-08-01T08:00:00Z'
-  },
-  {
-    id: 'veh-2',
-    make: 'Chevrolet',
-    model: 'Trailblazer Premier',
-    year: 2023,
-    color: 'Plata Metálico',
-    plate: 'MBB-9832',
-    capacity: 4,
-    photoUrl: 'https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&w=600&q=80',
-    status: 'DISPONIBLE',
-    assignedDriverId: 'usr-driver-2',
-    createdAt: '2026-08-01T08:00:00Z',
-    updatedAt: '2026-08-01T08:00:00Z'
-  }
-];
+const INITIAL_VEHICLES: Vehicle[] = [];
 
-// Initial Seed Users
+// Initial Seed Users (SOLO SUPER ADMIN)
 const INITIAL_USERS: User[] = [
   {
     id: 'usr-superadmin',
@@ -99,222 +70,17 @@ const INITIAL_USERS: User[] = [
     avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
     createdAt: '2026-08-01T08:00:00Z',
     updatedAt: '2026-08-01T08:00:00Z'
-  },
-  {
-    id: 'usr-admin-1',
-    username: 'admin',
-    fullName: 'Carlos Mendoza Vera (ADMINISTRADOR)',
-    cedula: '1309876543',
-    phone: '0998877665',
-    role: 'ADMIN',
-    status: 'active',
-    avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=300&q=80',
-    createdAt: '2026-08-01T08:00:00Z',
-    updatedAt: '2026-08-01T08:00:00Z'
-  },
-  {
-    id: 'usr-driver-1',
-    username: 'chofer1',
-    fullName: 'Roberto Zambrano Bravo',
-    cedula: '1304567890',
-    phone: '0987654321',
-    role: 'DRIVER',
-    status: 'active',
-    vehicleId: 'veh-1',
-    avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=300&q=80',
-    createdAt: '2026-08-01T08:00:00Z',
-    updatedAt: '2026-08-01T08:00:00Z'
-  },
-  {
-    id: 'usr-driver-2',
-    username: 'chofer2',
-    fullName: 'Manuel Cedeño Alcívar',
-    cedula: '1308899112',
-    phone: '0984433221',
-    role: 'DRIVER',
-    status: 'active',
-    vehicleId: 'veh-2',
-    avatarUrl: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=300&q=80',
-    createdAt: '2026-08-01T08:00:00Z',
-    updatedAt: '2026-08-01T08:00:00Z'
-  },
-  {
-    id: 'usr-customer-1',
-    username: '1305544332',
-    fullName: 'Ana Lucía Vera Cevallos',
-    cedula: '1305544332',
-    phone: '0981122334',
-    role: 'CUSTOMER',
-    status: 'active',
-    avatarUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=300&q=80',
-    createdAt: '2026-08-01T08:00:00Z',
-    updatedAt: '2026-08-01T08:00:00Z'
   }
 ];
 
 // Initial Seed Bookings
-const INITIAL_BOOKINGS: Booking[] = [
-  {
-    id: 'bk-101',
-    code: 'PAC-000125',
-    customerId: 'usr-customer-1',
-    customerName: 'Ana Lucía Vera Cevallos',
-    customerPhone: '0981122334',
-    customerCedula: '1305544332',
-    tripType: 'IDA_Y_VUELTA',
-    origin: 'Portoviejo',
-    destination: 'Pedernales',
-    originCityName: 'Portoviejo',
-    destinationCityName: 'Pedernales',
-    pickupAddress: 'Av. Reales Tamarindos y Callejon San Rafael',
-    pickupReference: 'Frente a Farmacias Sana Sana',
-    destAddress: 'Hotel Punta Prieta, Malecón',
-    destinationAddress: 'Hotel Punta Prieta, Malecón',
-    destReference: 'Lobby Principal',
-    passengers: 2,
-    passengerCount: 2,
-    departureDate: '2026-09-04',
-    travelDate: '2026-09-04',
-    departureTime: '08:00',
-    travelTime: '08:00',
-    returnDate: '2026-09-06',
-    returnTime: '16:00',
-    totalPrice: 50.0,
-    status: 'CONDUCTOR_ASIGNADO',
-    driverId: 'usr-driver-1',
-    assignedDriverId: 'usr-driver-1',
-    driverName: 'Roberto Zambrano Bravo',
-    driverPhone: '0987654321',
-    driverPhoto: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=300&q=80',
-    vehicleId: 'veh-1',
-    vehicleMake: 'Toyota',
-    vehicleModel: 'Fortuner 4x4',
-    vehicleColor: 'Negro Ejecutivo',
-    vehiclePlate: 'MBP-4521',
-    paymentMethod: 'TRANSFERENCIA',
-    paymentStatus: 'CONFIRMADO',
-    statusHistory: [
-      { status: 'PENDIENTE', timestamp: '2026-09-01T10:00:00Z', updatedBy: 'Ana Lucía Vera' },
-      { status: 'CONFIRMADA', timestamp: '2026-09-01T10:15:00Z', updatedBy: 'Carlos Mendoza (ADMIN)' },
-      { status: 'CONDUCTOR_ASIGNADO', timestamp: '2026-09-01T10:30:00Z', updatedBy: 'Carlos Mendoza (ADMIN)', notes: 'Conductor asignado: Roberto Zambrano' }
-    ],
-    createdAt: '2026-09-01T10:00:00Z',
-    updatedAt: '2026-09-01T10:30:00Z'
-  },
-  {
-    id: 'bk-102',
-    code: 'PAC-000126',
-    customerId: 'usr-customer-1',
-    customerName: 'Ana Lucía Vera Cevallos',
-    customerPhone: '0981122334',
-    customerCedula: '1305544332',
-    tripType: 'IDA',
-    origin: 'Portoviejo',
-    destination: 'San Vicente',
-    originCityName: 'Portoviejo',
-    destinationCityName: 'San Vicente',
-    pickupAddress: 'Terminal Terrestre de Portoviejo',
-    pickupReference: 'Puerta Principal Bloque A',
-    destAddress: 'Malecón Leonidas Vega',
-    destinationAddress: 'Malecón Leonidas Vega',
-    destReference: 'Junto al Restaurante El Muelle',
-    passengers: 1,
-    passengerCount: 1,
-    departureDate: '2026-09-05',
-    travelDate: '2026-09-05',
-    departureTime: '14:30',
-    travelTime: '14:30',
-    totalPrice: 9.0,
-    status: 'SOLICITADA',
-    paymentMethod: 'EFECTIVO',
-    paymentStatus: 'PENDIENTE',
-    statusHistory: [
-      { status: 'SOLICITADA', timestamp: '2026-09-02T12:00:00Z', updatedBy: 'Ana Lucía Vera' }
-    ],
-    createdAt: '2026-09-02T12:00:00Z',
-    updatedAt: '2026-09-02T12:00:00Z'
-  }
-];
+const INITIAL_BOOKINGS: Booking[] = [];
 
 // Initial Seed Shipments
-const INITIAL_SHIPMENTS: Shipment[] = [
-  {
-    id: 'sh-201',
-    code: 'PAC-EN-000125',
-    deliveryCode: '4827',
-    securityCode: '4827',
-    customerId: 'usr-customer-1',
-    senderName: 'Ana Lucía Vera',
-    senderPhone: '0981122334',
-    recipientName: 'Galo Mendoza Loor',
-    receiverName: 'Galo Mendoza Loor',
-    recipientPhone: '0997766554',
-    receiverPhone: '0997766554',
-    origin: 'Portoviejo',
-    originCityName: 'Portoviejo',
-    destination: 'Pedernales',
-    destinationCityName: 'Pedernales',
-    deliveryAddress: 'Av. Jaime Roldós y García Moreno',
-    description: 'Documentos notariales y caja de repuestos electrónicos',
-    packageDescription: 'Documentos notariales y caja de repuestos electrónicos',
-    packageCount: 2,
-    approxSize: 'MEDIANO',
-    approxWeightKg: 4.5,
-    declaredValue: 120.0,
-    price: 8.0,
-    status: 'EN_TRANSITO',
-    driverId: 'usr-driver-1',
-    assignedDriverId: 'usr-driver-1',
-    driverName: 'Roberto Zambrano Bravo',
-    driverPhone: '0987654321',
-    vehiclePlate: 'MBP-4521',
-    paymentMethod: 'EFECTIVO',
-    paymentStatus: 'CONFIRMADO',
-    statusHistory: [
-      { status: 'SOLICITUD_RECIBIDA', timestamp: '2026-09-02T09:00:00Z', updatedBy: 'Ana Lucía Vera' },
-      { status: 'ENCOMIENDA_RECIBIDA', timestamp: '2026-09-02T10:00:00Z', updatedBy: 'Roberto Zambrano (Conductor)' },
-      { status: 'EN_TRANSITO', timestamp: '2026-09-02T11:00:00Z', updatedBy: 'Roberto Zambrano (Conductor)' }
-    ],
-    createdAt: '2026-09-02T09:00:00Z',
-    updatedAt: '2026-09-02T11:00:00Z'
-  }
-];
+const INITIAL_SHIPMENTS: Shipment[] = [];
 
 // Initial Notifications
-const INITIAL_NOTIFICATIONS: AppNotification[] = [
-  {
-    id: 'notif-1',
-    targetRole: 'CUSTOMER',
-    userId: 'usr-customer-1',
-    title: 'Conductor Asignado',
-    message: 'Tu reserva PAC-000125 tiene asignado a Roberto Zambrano en un Toyota Fortuner (MBP-4521).',
-    type: 'BOOKING',
-    read: false,
-    linkId: 'bk-101',
-    createdAt: '2026-09-01T10:30:00Z'
-  },
-  {
-    id: 'notif-2',
-    targetRole: 'DRIVER',
-    userId: 'usr-driver-1',
-    title: 'Nuevo Servicio Asignado',
-    message: 'Tienes un nuevo viaje asignado (PAC-000125) Portoviejo ↔ Pedernales.',
-    type: 'BOOKING',
-    read: false,
-    linkId: 'bk-101',
-    createdAt: '2026-09-01T10:30:00Z'
-  },
-  {
-    id: 'notif-3',
-    targetRole: 'ADMIN',
-    title: 'Nueva Reserva Registrada',
-    message: 'Se ha creado la reserva PAC-000126 para Portoviejo → San Vicente.',
-    type: 'BOOKING',
-    read: false,
-    linkId: 'bk-102',
-    createdAt: '2026-09-02T12:00:00Z'
-  }
-];
+const INITIAL_NOTIFICATIONS: AppNotification[] = [];
 
 // Initial Settings
 const INITIAL_SETTINGS: AppSettings = {
@@ -532,45 +298,50 @@ export function initFirestoreRealtimeSync() {
 
     // 3. Vehicles listener
     onSnapshot(collection(db, 'vehicles'), (snap) => {
-      if (!snap.empty) {
-        const items: Vehicle[] = [];
-        snap.forEach((d) => items.push(d.data() as Vehicle));
-        localStorage.setItem(STORAGE_KEYS.VEHICLES, JSON.stringify(items));
-        emitChange();
-      }
+      const items: Vehicle[] = [];
+      snap.forEach((d) => items.push(d.data() as Vehicle));
+      localStorage.setItem(STORAGE_KEYS.VEHICLES, JSON.stringify(items));
+      emitChange();
     }, () => {});
 
     // 4. Bookings listener
     onSnapshot(collection(db, 'bookings'), (snap) => {
-      if (!snap.empty) {
-        const items: Booking[] = [];
-        snap.forEach((d) => items.push(d.data() as Booking));
-        localStorage.setItem(STORAGE_KEYS.BOOKINGS, JSON.stringify(items));
-        emitChange();
-      }
+      const items: Booking[] = [];
+      snap.forEach((d) => items.push(d.data() as Booking));
+      localStorage.setItem(STORAGE_KEYS.BOOKINGS, JSON.stringify(items));
+      emitChange();
     }, () => {});
 
     // 5. Shipments listener
     onSnapshot(collection(db, 'shipments'), (snap) => {
-      if (!snap.empty) {
-        const items: Shipment[] = [];
-        snap.forEach((d) => items.push(d.data() as Shipment));
-        localStorage.setItem(STORAGE_KEYS.SHIPMENTS, JSON.stringify(items));
-        emitChange();
-      }
+      const items: Shipment[] = [];
+      snap.forEach((d) => items.push(d.data() as Shipment));
+      localStorage.setItem(STORAGE_KEYS.SHIPMENTS, JSON.stringify(items));
+      emitChange();
     }, () => {});
 
     // 6. Users listener
     onSnapshot(collection(db, 'users'), (snap) => {
-      if (!snap.empty) {
-        const items: User[] = [];
-        snap.forEach((d) => items.push(d.data() as User));
-        localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(items));
-        emitChange();
+      const items: User[] = [];
+      snap.forEach((d) => items.push(d.data() as User));
+      // Always guarantee SuperAdmin is present
+      if (!items.some((u) => u.username === '1310857063' || u.role === 'SUPER_ADMIN')) {
+        items.unshift(INITIAL_USERS[0]);
       }
+      localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(items));
+      emitChange();
     }, () => {});
 
-    // 7. Settings listener (listens to all partitioned docs: core, visuals, guide_travel, guide_shipment, global)
+    // 7. Notifications listener
+    onSnapshot(collection(db, 'notifications'), (snap) => {
+      const items: AppNotification[] = [];
+      snap.forEach((d) => items.push(d.data() as AppNotification));
+      items.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      localStorage.setItem(STORAGE_KEYS.NOTIFICATIONS, JSON.stringify(items));
+      emitChange();
+    }, () => {});
+
+    // 8. Settings listener (listens to all partitioned docs: core, visuals, guide_travel, guide_shipment, global)
     onSnapshot(collection(db, 'settings'), (snap) => {
       // If the snapshot has pending local writes, do not overwrite local storage with intermediate state
       if (snap.metadata.hasPendingWrites) {
@@ -647,6 +418,18 @@ export function initFirestoreRealtimeSync() {
 
 // Auto bootstrap Firestore sync
 if (typeof window !== 'undefined') {
+  // One-time auto-wipe to clear legacy test data and establish clean zero state (keeping only Super Admin 1310857063)
+  const ZERO_STATE_KEY = 'pacha_zero_state_v1';
+  if (!localStorage.getItem(ZERO_STATE_KEY)) {
+    localStorage.setItem(STORAGE_KEYS.BOOKINGS, JSON.stringify([]));
+    localStorage.setItem(STORAGE_KEYS.SHIPMENTS, JSON.stringify([]));
+    localStorage.setItem(STORAGE_KEYS.NOTIFICATIONS, JSON.stringify([]));
+    localStorage.setItem(STORAGE_KEYS.VEHICLES, JSON.stringify([]));
+    localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(INITIAL_USERS));
+    localStorage.removeItem('pacha_passwords_v1');
+    localStorage.setItem(ZERO_STATE_KEY, 'true');
+  }
+
   setTimeout(() => {
     initFirestoreRealtimeSync();
   }, 100);
@@ -1309,6 +1092,20 @@ export const PachaStorage = {
     const users = this.getUsers().filter((u) => u.id !== id);
     deleteFirestoreDoc('users', id);
     this.saveUsers(users);
+
+    // If deleted user was a driver assigned to vehicles, unlink the vehicle
+    const vehicles = this.getVehicles();
+    let updatedVehicles = false;
+    const cleanVehicles = vehicles.map((v) => {
+      if (v.assignedDriverId === id) {
+        updatedVehicles = true;
+        return { ...v, assignedDriverId: undefined, updatedAt: new Date().toISOString() };
+      }
+      return v;
+    });
+    if (updatedVehicles) {
+      this.saveVehicles(cleanVehicles);
+    }
   },
 
   // --- NOTIFICATIONS ---
@@ -1331,29 +1128,38 @@ export const PachaStorage = {
     };
     notifs.unshift(newNotif);
     localStorage.setItem(STORAGE_KEYS.NOTIFICATIONS, JSON.stringify(notifs));
+    syncFirestoreDoc('notifications', newNotif.id, newNotif);
     emitChange();
   },
 
   markNotificationRead(id: string) {
     const notifs = this.getNotifications().map((n) => (n.id === id ? { ...n, read: true } : n));
     localStorage.setItem(STORAGE_KEYS.NOTIFICATIONS, JSON.stringify(notifs));
+    const target = notifs.find((n) => n.id === id);
+    if (target) {
+      syncFirestoreDoc('notifications', id, target);
+    }
     emitChange();
   },
 
   markAllNotificationsRead() {
     const notifs = this.getNotifications().map((n) => ({ ...n, read: true }));
     localStorage.setItem(STORAGE_KEYS.NOTIFICATIONS, JSON.stringify(notifs));
+    notifs.forEach((n) => syncFirestoreDoc('notifications', n.id, n));
     emitChange();
   },
 
   clearAllNotifications() {
+    const notifs = this.getNotifications();
     localStorage.setItem(STORAGE_KEYS.NOTIFICATIONS, JSON.stringify([]));
+    notifs.forEach((n) => deleteFirestoreDoc('notifications', n.id));
     emitChange();
   },
 
   deleteNotification(id: string) {
     const notifs = this.getNotifications().filter((n) => n.id !== id);
     localStorage.setItem(STORAGE_KEYS.NOTIFICATIONS, JSON.stringify(notifs));
+    deleteFirestoreDoc('notifications', id);
     emitChange();
   },
 

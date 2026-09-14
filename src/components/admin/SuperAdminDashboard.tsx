@@ -19,7 +19,8 @@ import {
   KeyRound,
   Download,
   Shield,
-  Palette
+  Palette,
+  RotateCcw
 } from 'lucide-react';
 import { User, UserRole, Booking, Shipment, Vehicle } from '../../types';
 import { PachaStorage } from '../../services/storage';
@@ -38,9 +39,22 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
   onSelectTab
 }) => {
   const [users, setUsers] = useState<User[]>(() => PachaStorage.getUsers());
-  const [bookings] = useState<Booking[]>(() => PachaStorage.getBookings());
-  const [shipments] = useState<Shipment[]>(() => PachaStorage.getShipments());
-  const [vehicles] = useState<Vehicle[]>(() => PachaStorage.getVehicles());
+  const [bookings, setBookings] = useState<Booking[]>(() => PachaStorage.getBookings());
+  const [shipments, setShipments] = useState<Shipment[]>(() => PachaStorage.getShipments());
+  const [vehicles, setVehicles] = useState<Vehicle[]>(() => PachaStorage.getVehicles());
+
+  const refreshAll = () => {
+    setUsers(PachaStorage.getUsers());
+    setBookings(PachaStorage.getBookings());
+    setShipments(PachaStorage.getShipments());
+    setVehicles(PachaStorage.getVehicles());
+  };
+
+  useEffect(() => {
+    refreshAll();
+    const unsub = PachaStorage.subscribe(refreshAll);
+    return () => unsub();
+  }, []);
 
   const [showAdminModal, setShowAdminModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -170,14 +184,37 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
           </div>
         </div>
 
-        <button
-          id="btn-superadmin-create-admin"
-          onClick={() => setShowAdminModal(true)}
-          className="px-4 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-purple-600/30 active:scale-95 transition-all"
-        >
-          <UserPlus className="w-4 h-4" />
-          <span>+ CREAR NUEVO ADMINISTRADOR</span>
-        </button>
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            id="btn-superadmin-reset-data"
+            onClick={async () => {
+              if (
+                window.confirm(
+                  '¿ATENCIÓN: Desea REINICIAR TODO EL SISTEMA A CERO?\n\nEsta acción eliminará todos los viajes, encomiendas, notificaciones, vehículos y usuarios creados, manteniendo EXCLUSIVAMENTE su cuenta de SUPER ADMIN.\n\n¿Desea continuar?'
+                )
+              ) {
+                await PachaStorage.resetAllData();
+                refreshUsers();
+                setFeedbackMessage('¡Sistema reiniciado a CERO con éxito! Solo se mantiene la cuenta SUPER ADMIN.');
+                setTimeout(() => setFeedbackMessage(null), 5000);
+              }
+            }}
+            className="px-3.5 py-3 rounded-xl bg-red-950/40 hover:bg-red-900/60 border border-red-500/40 text-red-300 font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all active:scale-95"
+            title="Reiniciar todos los datos a cero manteniendo Super Admin"
+          >
+            <RotateCcw className="w-4 h-4" />
+            <span>REINICIAR SISTEMA A CERO</span>
+          </button>
+
+          <button
+            id="btn-superadmin-create-admin"
+            onClick={() => setShowAdminModal(true)}
+            className="px-4 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-purple-600/30 active:scale-95 transition-all"
+          >
+            <UserPlus className="w-4 h-4" />
+            <span>+ CREAR NUEVO ADMINISTRADOR</span>
+          </button>
+        </div>
       </div>
 
       {/* Success Notification Alert */}

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { User, UserRole, Booking, Shipment, AppNotification } from './types';
-import { PachaStorage } from './services/storage';
+import { PachaStorage, initFirestoreRealtimeSync } from './services/storage';
 import { PachaAuth } from './services/auth';
 
 // Common Components
@@ -47,9 +47,21 @@ export default function App() {
   );
 
   useEffect(() => {
+    // Initialize Firestore real-time synchronization
+    initFirestoreRealtimeSync();
+
     // Real-time synchronization subscription
     const unsubscribe = PachaStorage.subscribe(() => {
       setNotifications(PachaStorage.getNotifications());
+      // Check if current user's profile or status changed in real-time
+      const activeUser = PachaAuth.getCurrentUser();
+      if (activeUser) {
+        const freshUser = PachaStorage.getUsers().find((u) => u.id === activeUser.id);
+        if (freshUser && (freshUser.status !== activeUser.status || freshUser.role !== activeUser.role)) {
+          PachaAuth.switchUser(freshUser);
+          setCurrentUser(freshUser);
+        }
+      }
     });
 
     const interval = setInterval(() => {

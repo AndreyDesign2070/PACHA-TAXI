@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   LayoutDashboard,
   Calendar,
@@ -87,6 +87,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [settingsSavedMsg, setSettingsSavedMsg] = useState<string | null>(null);
 
   // Filter & Search
+  const [driverSearchQuery, setDriverSearchQuery] = useState('');
+  const [driverStatusFilter, setDriverStatusFilter] = useState<'ALL' | 'ACTIVE' | 'SUSPENDED'>('ALL');
   const [clientSearchQuery, setClientSearchQuery] = useState('');
   const [clientStatusFilter, setClientStatusFilter] = useState<'ALL' | 'ACTIVE' | 'SUSPENDED'>('ALL');
   const [bookingFilterStatus, setBookingFilterStatus] = useState<string>('ALL');
@@ -131,6 +133,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     const latestSettings = PachaStorage.getSettings();
     setSettings(latestSettings);
   };
+
+  useEffect(() => {
+    refreshData();
+    const unsub = PachaStorage.subscribe(refreshData);
+    return () => unsub();
+  }, []);
 
   const showNotification = (msg: string) => {
     setNotificationMsg(msg);
@@ -335,6 +343,38 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       PachaStorage.deleteUser(customer.id);
       refreshData();
       showNotification(`Cliente "${customer.fullName}" eliminado permanentemente.`);
+    }
+  };
+
+  // Handle Toggle Suspend Driver (User requirement: "COMO ADMIN, DEBO PODER SUSPENDER, ELIMINAR Y REACTIVAR CUENTAS DE CONDUCTORES")
+  const handleToggleSuspendDriver = (driver: User) => {
+    const isCurrentlyActive = driver.status === 'active';
+    const confirmPrompt = isCurrentlyActive
+      ? `¿Está seguro de que desea SUSPENDER al conductor "${driver.fullName}" (Cédula: ${driver.cedula || driver.username})?\n\nEl conductor no podrá iniciar sesión ni atender viajes o encomiendas mientras esté suspendido.`
+      : `¿Desea REACTIVAR al conductor "${driver.fullName}" (Cédula: ${driver.cedula || driver.username})?\n\nEl conductor podrá volver a iniciar sesión, conectarse y recibir solicitudes de viajes y encomiendas.`;
+
+    if (window.confirm(confirmPrompt)) {
+      const nextStatus = isCurrentlyActive ? 'suspended' : 'active';
+      PachaStorage.updateUserStatus(driver.id, nextStatus);
+      refreshData();
+      showNotification(
+        isCurrentlyActive
+          ? `Conductor "${driver.fullName}" ha sido SUSPENDIDO.`
+          : `Conductor "${driver.fullName}" ha sido REACTIVADO exitosamente.`
+      );
+    }
+  };
+
+  // Handle Delete Driver (User requirement: "COMO ADMIN, DEBO PODER SUSPENDER, ELIMINAR Y REACTIVAR CUENTAS DE CONDUCTORES")
+  const handleDeleteDriver = (driver: User) => {
+    if (
+      window.confirm(
+        `¿Está seguro de que desea ELIMINAR PERMANENTEMENTE al conductor "${driver.fullName}" (Cédula: ${driver.cedula || driver.username})?\n\nEsta acción eliminará de forma definitiva su cuenta del sistema y liberará cualquier vehículo asociado. No se puede deshacer.`
+      )
+    ) {
+      PachaStorage.deleteUser(driver.id);
+      refreshData();
+      showNotification(`Conductor "${driver.fullName}" eliminado permanentemente.`);
     }
   };
 
@@ -840,84 +880,346 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         </div>
       )}
 
-      {/* 4. DRIVERS & FLEET (Prompt: "COMO ADMIN, EN NUEVO CONDUCTOR, PODER ESCRIBIR LAS CARACTERISTICAS DEL CARRO MANUALMENTE") */}
-      {activeTab === 'DRIVERS' && (
-        <div className="space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <h3 className="text-base font-bold text-white">Conductores y Flota Ejecutiva</h3>
-              <p className="text-xs text-slate-400">
-                Registra choferes y escribe los datos del carro manualmente o asigna de la flota
-              </p>
-            </div>
-            <button
-              id="btn-open-create-driver"
-              onClick={() => setShowDriverModal(true)}
-              className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black text-xs uppercase tracking-wider flex items-center gap-1.5 shadow-md active:scale-95 transition-all"
-            >
-              <UserPlus className="w-4 h-4" />
-              <span>NUEVO CONDUCTOR (INGRESAR CARRO)</span>
-            </button>
-          </div>
+      {/* 4. DRIVERS & FLEET (Prompt: "COMO ADMIN, DEBO PODER SUSPENDER, ELIMINAR Y REACTIVAR CUENTAS DE CONDUCTORES") */}
+      {activeTab === 'DRIVERS' && (() => {
+        const allDrivers = users.filter((u) => u.role === 'DRIVER');
+        const activeDriverCount = allDrivers.filter((d) => d.status === 'active').length;
+        const suspendedDriverCount = allDrivers.filter((d) => d.status === 'suspended').length;
 
-          {/* Drivers List */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {users.filter((u) => u.role === 'DRIVER').map((driver) => {
-              const assignedVeh = vehicles.find((v) => v.assignedDriverId === driver.id);
-              return (
-                <div
-                  key={driver.id}
-                  className="p-5 rounded-2xl bg-[#0B192C] border border-amber-500/20 shadow-lg space-y-3"
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold">
-                        <Car className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <h4 className="text-sm font-bold text-white">{driver.fullName}</h4>
-                        <p className="text-xs text-slate-400 font-mono">
-                          Usuario: <span className="text-amber-400 font-bold">{driver.username}</span>
-                        </p>
-                      </div>
-                    </div>
+        const filteredDrivers = allDrivers
+          .filter((d) => {
+            if (driverStatusFilter === 'ACTIVE') return d.status === 'active';
+            if (driverStatusFilter === 'SUSPENDED') return d.status === 'suspended';
+            return true;
+          })
+          .filter((d) => {
+            if (!driverSearchQuery.trim()) return true;
+            const q = driverSearchQuery.toLowerCase();
+            const veh = vehicles.find((v) => v.assignedDriverId === d.id);
+            return (
+              d.fullName.toLowerCase().includes(q) ||
+              (d.cedula && d.cedula.includes(q)) ||
+              (d.username && d.username.toLowerCase().includes(q)) ||
+              (d.phone && d.phone.includes(q)) ||
+              (veh && veh.plate.toLowerCase().includes(q)) ||
+              (veh && veh.make.toLowerCase().includes(q)) ||
+              (veh && veh.model.toLowerCase().includes(q))
+            );
+          });
 
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">
-                      {driver.status.toUpperCase()}
+        return (
+          <div className="space-y-6">
+            {/* Header & Stats Banner */}
+            <div className="p-5 sm:p-6 rounded-3xl bg-[#0B192C] border border-amber-500/20 shadow-xl space-y-4">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-amber-400 px-2.5 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30">
+                      Flota y Choferes
                     </span>
+                    <span className="text-xs text-slate-400">Gestión Operativa de Choferes</span>
+                  </div>
+                  <h3 className="text-lg sm:text-xl font-black text-white font-brand mt-1">
+                    Directorio y Control de Conductores
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    Como Administrador puedes registrar choferes, asignar unidades, suspender temporalmente o eliminar cuentas de forma permanente.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2 flex-wrap">
+                  {/* Quick Stats Badges */}
+                  <div className="px-3.5 py-2 rounded-xl bg-slate-900 border border-slate-800 flex items-center gap-2">
+                    <Car className="w-4 h-4 text-amber-400" />
+                    <div>
+                      <span className="text-[10px] text-slate-400 block uppercase font-bold">Total</span>
+                      <span className="text-sm font-bold font-mono text-white">{allDrivers.length}</span>
+                    </div>
                   </div>
 
-                  <div className="p-3 rounded-xl bg-slate-900 text-xs space-y-1.5">
-                    <p className="text-slate-300">
-                      <span className="text-slate-500">Cédula:</span> {driver.cedula || driver.username}
-                    </p>
-                    <p className="text-slate-300">
-                      <span className="text-slate-500">Teléfono:</span> {driver.phone}
-                    </p>
-                    <div className="pt-1.5 border-t border-slate-800">
-                      <span className="text-amber-400 text-[10px] uppercase font-bold block mb-0.5">
-                        Características del Vehículo Asignado:
-                      </span>
-                      {assignedVeh ? (
-                        <div className="flex items-center justify-between">
-                          <span className="font-semibold text-white">
-                            {assignedVeh.make} {assignedVeh.model} ({assignedVeh.year}) • Color {assignedVeh.color}
+                  <div className="px-3.5 py-2 rounded-xl bg-emerald-950/40 border border-emerald-500/30 flex items-center gap-2">
+                    <UserCheck className="w-4 h-4 text-emerald-400" />
+                    <div>
+                      <span className="text-[10px] text-emerald-300 block uppercase font-bold">Activos</span>
+                      <span className="text-sm font-bold font-mono text-emerald-400">{activeDriverCount}</span>
+                    </div>
+                  </div>
+
+                  <div className="px-3.5 py-2 rounded-xl bg-red-950/40 border border-red-500/30 flex items-center gap-2">
+                    <UserX className="w-4 h-4 text-red-400" />
+                    <div>
+                      <span className="text-[10px] text-red-300 block uppercase font-bold">Suspendidos</span>
+                      <span className="text-sm font-bold font-mono text-red-400">{suspendedDriverCount}</span>
+                    </div>
+                  </div>
+
+                  {/* Botón Nuevo Conductor */}
+                  <button
+                    id="btn-open-create-driver"
+                    onClick={() => setShowDriverModal(true)}
+                    className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black text-xs uppercase tracking-wider flex items-center gap-1.5 shadow-md active:scale-95 transition-all"
+                  >
+                    <UserPlus className="w-4 h-4" />
+                    <span>NUEVO CONDUCTOR</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Filters & Search Toolbar */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-slate-800">
+                {/* Status Filter Buttons */}
+                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+                  <button
+                    onClick={() => setDriverStatusFilter('ALL')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+                      driverStatusFilter === 'ALL'
+                        ? 'bg-amber-500 text-slate-950 shadow'
+                        : 'bg-slate-900 text-slate-400 hover:text-white hover:bg-slate-800'
+                    }`}
+                  >
+                    Todos ({allDrivers.length})
+                  </button>
+                  <button
+                    onClick={() => setDriverStatusFilter('ACTIVE')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+                      driverStatusFilter === 'ACTIVE'
+                        ? 'bg-emerald-600 text-white shadow'
+                        : 'bg-slate-900 text-slate-400 hover:text-white hover:bg-slate-800'
+                    }`}
+                  >
+                    Activos ({activeDriverCount})
+                  </button>
+                  <button
+                    onClick={() => setDriverStatusFilter('SUSPENDED')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+                      driverStatusFilter === 'SUSPENDED'
+                        ? 'bg-red-600 text-white shadow'
+                        : 'bg-slate-900 text-slate-400 hover:text-white hover:bg-slate-800'
+                    }`}
+                  >
+                    Suspendidos ({suspendedDriverCount})
+                  </button>
+                </div>
+
+                {/* Search Bar */}
+                <div className="relative w-full sm:w-80">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <input
+                    type="text"
+                    value={driverSearchQuery}
+                    onChange={(e) => setDriverSearchQuery(e.target.value)}
+                    placeholder="Buscar chofer, placa, cédula o teléfono..."
+                    className="w-full pl-9 pr-8 py-2 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-amber-500"
+                  />
+                  {driverSearchQuery && (
+                    <button
+                      onClick={() => setDriverSearchQuery('')}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Drivers List */}
+            {filteredDrivers.length === 0 ? (
+              <div className="p-8 sm:p-12 rounded-3xl bg-[#0B192C] border border-slate-800 text-center space-y-3">
+                <Car className="w-12 h-12 text-slate-600 mx-auto opacity-60" />
+                <h4 className="text-base font-bold text-white">
+                  {driverSearchQuery
+                    ? 'No se encontraron conductores con ese criterio'
+                    : 'No hay conductores registrados'}
+                </h4>
+                <p className="text-xs text-slate-400 max-w-md mx-auto">
+                  {driverSearchQuery
+                    ? 'Intenta con otro término de búsqueda o limpia el filtro.'
+                    : 'La base de datos se encuentra limpia en cero de información. Puedes registrar un nuevo conductor y especificar las características del vehículo manualmente.'}
+                </p>
+                {driverSearchQuery ? (
+                  <button
+                    onClick={() => setDriverSearchQuery('')}
+                    className="mt-2 px-4 py-2 rounded-xl bg-slate-800 text-amber-400 text-xs font-bold hover:bg-slate-700"
+                  >
+                    Limpiar búsqueda
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => setShowDriverModal(true)}
+                    className="mt-2 px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-black uppercase tracking-wider inline-flex items-center gap-2"
+                  >
+                    <UserPlus className="w-4 h-4" />
+                    <span>REGISTRAR PRIMER CONDUCTOR</span>
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {filteredDrivers.map((driver) => {
+                  const assignedVeh = vehicles.find((v) => v.assignedDriverId === driver.id);
+                  const isSuspended = driver.status === 'suspended';
+                  const driverTrips = bookings.filter((b) => b.driverId === driver.id || b.assignedDriverId === driver.id);
+                  const driverShipments = shipments.filter((s) => s.driverId === driver.id || s.assignedDriverId === driver.id);
+
+                  return (
+                    <div
+                      key={driver.id}
+                      className={`p-5 rounded-3xl bg-[#0B192C] border transition-all shadow-lg space-y-4 ${
+                        isSuspended
+                          ? 'border-red-500/40 opacity-90'
+                          : 'border-amber-500/25 hover:border-amber-500/50'
+                      }`}
+                    >
+                      {/* Driver Card Header */}
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                          <div
+                            className={`w-12 h-12 rounded-2xl flex items-center justify-center font-bold text-lg shrink-0 border ${
+                              isSuspended
+                                ? 'bg-red-500/20 text-red-300 border-red-500/40'
+                                : 'bg-amber-500/20 text-amber-300 border-amber-500/30'
+                            }`}
+                          >
+                            <Car className="w-6 h-6" />
+                          </div>
+                          <div>
+                            <h4 className="text-sm sm:text-base font-bold text-white flex items-center gap-1.5">
+                              <span>{driver.fullName}</span>
+                            </h4>
+                            <p className="text-xs text-slate-400 font-mono">
+                              Usuario: <span className="text-amber-400 font-bold">{driver.username}</span>
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Status Badge */}
+                        <span
+                          className={`px-2.5 py-1 rounded-full text-[10px] font-black tracking-wider uppercase border inline-flex items-center gap-1.5 shrink-0 ${
+                            isSuspended
+                              ? 'bg-red-500/20 text-red-300 border-red-500/40'
+                              : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                          }`}
+                        >
+                          <span
+                            className={`w-2 h-2 rounded-full ${
+                              isSuspended ? 'bg-red-400' : 'bg-emerald-400 animate-pulse'
+                            }`}
+                          />
+                          {isSuspended ? 'SUSPENDIDO' : 'ACTIVO'}
+                        </span>
+                      </div>
+
+                      {/* Driver Details & Vehicle Info */}
+                      <div className="p-3.5 rounded-2xl bg-slate-900/90 text-xs space-y-2 border border-slate-800">
+                        <div className="grid grid-cols-2 gap-2 text-slate-300">
+                          <div>
+                            <span className="text-slate-500 block text-[10px] uppercase font-bold">Cédula:</span>
+                            <span className="font-mono text-white font-semibold">
+                              {driver.cedula || driver.username}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-slate-500 block text-[10px] uppercase font-bold">Teléfono:</span>
+                            {driver.phone ? (
+                              <a
+                                href={`https://wa.me/593${driver.phone.replace(/\D/g, '').replace(/^0/, '')}?text=Estimado%20conductor%20${encodeURIComponent(driver.fullName)},%20le%20contactamos%20de%20administracion%20PACHA.`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-emerald-400 hover:underline inline-flex items-center gap-1 font-mono"
+                              >
+                                <Phone className="w-3 h-3" />
+                                <span>{driver.phone}</span>
+                              </a>
+                            ) : (
+                              <span className="text-slate-500 italic">No registrado</span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Historial rápido */}
+                        <div className="flex items-center gap-3 pt-1 text-[11px]">
+                          <span className="text-slate-400">
+                            Viajes atendidos: <strong className="text-white font-mono">{driverTrips.length}</strong>
                           </span>
-                          <span className="font-mono text-amber-300 font-bold px-2 py-0.5 rounded bg-slate-950 border border-amber-500/40">
-                            {assignedVeh.plate}
+                          <span className="text-slate-600">•</span>
+                          <span className="text-slate-400">
+                            Encomiendas: <strong className="text-white font-mono">{driverShipments.length}</strong>
                           </span>
                         </div>
-                      ) : (
-                        <span className="text-slate-500 italic">Sin unidad asignada</span>
-                      )}
+
+                        {/* Vehículo Asignado */}
+                        <div className="pt-2 border-t border-slate-800">
+                          <span className="text-amber-400 text-[10px] uppercase font-bold block mb-1">
+                            Vehículo y Características:
+                          </span>
+                          {assignedVeh ? (
+                            <div className="flex items-center justify-between gap-2 p-2 rounded-xl bg-slate-950 border border-slate-800">
+                              <div>
+                                <span className="font-semibold text-white block">
+                                  {assignedVeh.make} {assignedVeh.model} ({assignedVeh.year})
+                                </span>
+                                <span className="text-[11px] text-slate-400">
+                                  Color: {assignedVeh.color} • Capacidad: {assignedVeh.capacity} pax
+                                </span>
+                              </div>
+                              <span className="font-mono text-amber-300 font-black px-2.5 py-1 rounded-lg bg-amber-950/60 border border-amber-500/40 text-xs">
+                                {assignedVeh.plate}
+                              </span>
+                            </div>
+                          ) : (
+                            <div className="p-2 rounded-xl bg-slate-950/50 border border-dashed border-slate-800 text-slate-500 text-xs italic">
+                              Sin vehículo asignado a este conductor
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Botones de Acción de Administrador: Suspender, Reactivar, Eliminar */}
+                      <div className="flex items-center justify-between gap-2 pt-1 border-t border-slate-800/80">
+                        {/* Botón Suspender o Reactivar */}
+                        <button
+                          id={`btn-toggle-driver-${driver.id}`}
+                          onClick={() => handleToggleSuspendDriver(driver)}
+                          className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 border ${
+                            isSuspended
+                              ? 'bg-emerald-600/30 text-emerald-300 border-emerald-500/40 hover:bg-emerald-600 hover:text-white'
+                              : 'bg-amber-500/20 text-amber-300 border-amber-500/40 hover:bg-amber-500 hover:text-slate-950'
+                          }`}
+                          title={isSuspended ? 'Reactivar cuenta del conductor' : 'Suspender cuenta del conductor'}
+                        >
+                          {isSuspended ? (
+                            <>
+                              <Check className="w-3.5 h-3.5" />
+                              <span>REACTIVAR CUENTA</span>
+                            </>
+                          ) : (
+                            <>
+                              <ShieldAlert className="w-3.5 h-3.5" />
+                              <span>SUSPENDER CHOFER</span>
+                            </>
+                          )}
+                        </button>
+
+                        {/* Botón Eliminar Conductor */}
+                        <button
+                          id={`btn-delete-driver-${driver.id}`}
+                          onClick={() => handleDeleteDriver(driver)}
+                          className="py-2 px-3 rounded-xl text-xs font-bold bg-red-500/15 text-red-400 border border-red-500/30 hover:bg-red-600 hover:text-white hover:border-red-600 transition flex items-center gap-1.5"
+                          title="Eliminar permanentemente este conductor"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>ELIMINAR</span>
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                </div>
-              );
-            })}
+                  );
+                })}
+              </div>
+            )}
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* 5. CUSTOMERS (Prompt: "COMO ADMIN DEBO PODER SUSPENDER Y ELIMINAR CLIENTES") */}
       {activeTab === 'CUSTOMERS' && (() => {

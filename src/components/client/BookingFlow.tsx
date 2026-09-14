@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   MapPin,
   Calendar,
@@ -31,8 +31,16 @@ export const BookingFlow: React.FC<BookingFlowProps> = ({
   onOpenLogin,
   onBookingComplete
 }) => {
-  const cities = PachaStorage.getActiveCities();
-  const settings = PachaStorage.getSettings();
+  const [cities, setCities] = useState(() => PachaStorage.getActiveCities());
+  const [settings, setSettings] = useState(() => PachaStorage.getSettings());
+
+  useEffect(() => {
+    const unsub = PachaStorage.subscribe(() => {
+      setCities(PachaStorage.getActiveCities());
+      setSettings(PachaStorage.getSettings());
+    });
+    return () => unsub();
+  }, []);
 
   // Form State for 10-step flow
   const [originCityId, setOriginCityId] = useState<string>(cities[0]?.id || '');

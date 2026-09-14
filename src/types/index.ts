@@ -7,6 +7,7 @@ export interface User {
   cedula: string;
   phone: string; // WhatsApp
   email?: string;
+  password?: string;
   role: UserRole;
   status: 'active' | 'suspended' | 'inactive';
   avatarUrl?: string;
